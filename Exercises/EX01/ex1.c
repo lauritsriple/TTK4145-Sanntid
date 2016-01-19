@@ -1,6 +1,8 @@
 #include <pthread.h>
 #include <stdio.h>
 
+// To use gcc with pthreads use lpthread as flag "gcc file.c -lpthread -o outputfilname"
+
 int i = 0;
 pthread_t IOThread;
 
