@@ -1,0 +1,7 @@
+An atomic operation is an operation that happens in one instruction.
+
+A semaphore is a variable that is used for controlling acess to a common resource in a system
+
+A mutex ensures that only one object can access an object at one time
+
+A critical section is a part of the code witch cannot be concurently executed. A part of a program that requires a mutex of access. This critical section could be a data structure or a periphal device
