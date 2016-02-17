@@ -26,7 +26,8 @@ func udp_receive_blocking() bool {
 	serverConn, err := net.ListenUDP("udp",serverAddr)
 	CheckError(err)
 	if err!=nil{
-		return false
+		defer serverConn.Close()
+		return true
 	}
 	
 	defer serverConn.Close()
@@ -35,10 +36,12 @@ func udp_receive_blocking() bool {
 	serverConn.SetReadDeadline(time.Now().Add(5 * time.Second))
 	n,addr,err := serverConn.ReadFromUDP(buf)
 	if err!=nil{
-		return false
+		defer serverConn.Close()
+		return true
 	}
 	fmt.Println("received ",string(buf[0:n])," from ",addr)
 	CheckError(err)
+	defer serverConn.Close()
 	return false
 }
 
@@ -58,12 +61,14 @@ func udp_receive_nonBlocking(recv chan<-int, alive chan<-bool){
 		n,addr,err := serverConn.ReadFromUDP(buf)
 		if (err != nil){
 			alive<-false
+			defer serverConn.Close()
 		}
 		
 		i,err :=  strconv.Atoi(string(buf[0:n]))
 		fmt.Println("received ",i," from ",addr)
-		recv<-i
 		alive<-true
+		recv<-i
+		
 	} 
 
 }
@@ -92,8 +97,8 @@ func udp_send(count int){
 }
 
 func isMaster()bool{
-	slave := udp_receive_blocking()
-	if !slave{
+	master := udp_receive_blocking()
+	if master{
 		return true
 	} else{
 		return false
@@ -109,10 +114,10 @@ func initSlave()int{
 	alive_ch := make(chan bool)
 	go udp_receive_nonBlocking(ch,alive_ch)
 	for master == false{
-		count = <- ch
 		if !<-alive_ch{
 			return count
 		}
+		count = <- ch
 	}
 	return 0
 }
@@ -123,9 +128,13 @@ func main(){
 	master:=isMaster()
 	for{
 		if master{
-			go udp_send(count)
-			exec.Command("go","run","/home/student/TTK4145-Sanntid/Exercises/EX06/process_pair.go")
+			fmt.Println("Master spawned")
+			cmd:= exec.Command("gnome-terminal","-x","bash","-c", "go run /home/student/TTK4145-Sanntid/Exercises/EX06/process_pair.go")
+			err:= cmd.Start()
+			fmt.Println(err)
+			udp_send(count)
 		} else{
+			fmt.Println("Slave spawned")
 			count=initSlave()
 			//Master died
 			master=true
