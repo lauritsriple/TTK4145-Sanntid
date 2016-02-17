@@ -1,5 +1,7 @@
 package main 
-import driver
+import "./driver"
+import "fmt"
 func main(){
-	driver.driver_init()
+	n:=driver.Driver_init()
+	fmt.Println(n)
 }
