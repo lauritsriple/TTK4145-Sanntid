@@ -28,6 +28,10 @@ func cIntToBool(i C.int) bool{
 func io_init() bool {
 	n, err := C.io_init()
 	checkError(err)
+	if err !=nil{
+		return 1 //sucess
+	}
+	return 0 //failed
 }
 
 func io_setBit(channel int){
@@ -56,3 +60,4 @@ func io_readAnalog(channel int) int{
 	checkError(err)
 	return int(n)
 }
+
