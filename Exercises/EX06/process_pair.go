@@ -26,7 +26,7 @@ func udp_receive_blocking() bool {
 	serverConn, err := net.ListenUDP("udp",serverAddr)
 	CheckError(err)
 	if err!=nil{
-		defer serverConn.Close()
+		serverConn.Close()
 		return true
 	}
 	
@@ -36,12 +36,12 @@ func udp_receive_blocking() bool {
 	serverConn.SetReadDeadline(time.Now().Add(5 * time.Second))
 	n,addr,err := serverConn.ReadFromUDP(buf)
 	if err!=nil{
-		defer serverConn.Close()
+		serverConn.Close()
 		return true
 	}
 	fmt.Println("received ",string(buf[0:n])," from ",addr)
 	CheckError(err)
-	defer serverConn.Close()
+	serverConn.Close()
 	return false
 }
 
@@ -52,7 +52,7 @@ func udp_receive_nonBlocking(recv chan<-int, alive chan<-bool){
 	serverConn, err := net.ListenUDP("udp",serverAddr)
 	CheckError(err)
 	
-	defer serverConn.Close()
+	serverConn.Close()
 
 	buf:= make([]byte,1024)
 	
@@ -61,7 +61,7 @@ func udp_receive_nonBlocking(recv chan<-int, alive chan<-bool){
 		n,addr,err := serverConn.ReadFromUDP(buf)
 		if (err != nil){
 			alive<-false
-			defer serverConn.Close()
+			serverConn.Close()
 		}
 		
 		i,err :=  strconv.Atoi(string(buf[0:n]))
