@@ -46,7 +46,7 @@ func tcp_talk(){
 
 	conn.Write([]byte("HelloWorld!\000"))
 
-	laddr, err := net.ResolveTCPAddr("tcp",":30000")
+	laddr, err := net.ResolveTCPAddr("tcp4",":30000")
 	CheckError(err)
 	listen,err := net.ListenTCP("tcp",laddr)
 	CheckError(err)

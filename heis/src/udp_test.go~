@@ -1,0 +1,18 @@
+package main
+
+import ("fmt"
+	"udp")
+
+func main(){
+	udpListenChan:=make(chan string)
+	udpBroadcastChan:=make(chan string)
+	go udp.UDP_listen(udpListenChan)
+	for {
+		count:=0
+		udpBroadcastChan<-count
+		count++
+		udp.UDP_broadcast(udpBroadcastChan)
+		time.Sleep(time.Second * 1)
+		if count>=10
+			count:=0
+	}
