@@ -69,7 +69,7 @@ func (fsmData elevFSM) LoopIO(){
 	// default:
 	// 	pass
 	// }
-}	
+}
 
 func Initialize(){
 	driver.DriverInit()
@@ -88,5 +88,31 @@ func (fsmData elevFSM)FSM(){
 			} else {
 				// send message to master that the elevator has arrived at foor 1
 				driver.Driver_setMotorDir(driver.MD_stop)
+				}
+		case 2:
+			if fsmData.floor < 1{
+				driver.Driver_setMotorDir(driver.MD_up)
+			} else if fsmData.floor != {
+				driver.Driver_setMotorDir(driver.MD_down)
+			} else {
+				driver.Driver_setMotorDir(driver.MD_stop)
+			}
+		case 3:
+			if fsmData.floor > 3{
+				driver.Driver_setMotorDir(driver.MD_down)
+			} else if fsmData.floor != 3{
+				driver.Driver_setMotorDir(driver.MD_up)
+			} else {
+				driver.Driver_setMotorDir(driver.MD_stop)
+			}
+		case 4:
+			if fsmData.floor != 4{
+				driver.Driver_setMotorDir(driver.MD_up)
+			} else {
+				driver.Driver_setMotorDir(driver.MD_stop)
+			}
+		}
+	}
+
 
 
