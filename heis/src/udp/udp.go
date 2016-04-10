@@ -2,9 +2,12 @@ package udp
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -14,7 +17,10 @@ import (
 //go install udp
 
 const PORT string = "20012"
-const BROADCASTADDR string = "129.241.187.255"
+const BROADCASTADDR string = "192.168.43.255"
+const braddr string = "239.0.0.49:2000"
+
+type Orderstatus int
 
 const (
 	New Orderstatus = iota
@@ -51,7 +57,7 @@ func findIP() (string, *net.Interface, error) {
 	for _, iface := range ifaces {
 		addrs, _ := iface.Addrs()
 		for _, a := range addrs {
-			if strings.Contains(a.String, "129.") {
+			if strings.Contains(a.String(), "192.") {
 				return a.String(), &iface, nil
 			}
 		}
@@ -61,7 +67,7 @@ func findIP() (string, *net.Interface, error) {
 
 //Called by NetInit
 //Returns 3 last digits from IPv4 adress
-func FindID(a string) int {
+func findID(a string) int {
 	fmt.Println(a)
 	id, err := strconv.Atoi(strings.Split(a, ".")[3][:3])
 	if err != nil {
@@ -73,20 +79,24 @@ func FindID(a string) int {
 //Sets up the broadcast
 //Called by NetInit
 func BroadcastInit(send <-chan Message, recv chan<- Message, iface *net.Interface, quit <-chan bool) {
-	group, err := net.ResolveUDPAddr("udp", BROADCASTADDR)
+	fmt.Println("yolo1")
+	group, err := net.ResolveUDPAddr("udp", braddr)
 	checkError(err)
+	fmt.Println("yolo2")
 	conn, err := net.ListenMulticastUDP("udp", iface, group)
 	checkError(err)
+	fmt.Println("yolo3")
 	defer conn.Close()
 	go broadcastListen(recv, conn)
-	go broadcastSend(send, conn, group)
+	go broadcastSend(send, conn, group, quit)
 	fmt.Println("Network running")
 	<-quit //w8 for channel to be true. Defer will be called
 }
 
 //Workerthread. Called by BroadcastInit
-func broadcastListen(send <-chan Message, conn *net.UDPConn, addr *net.UDPAddr) {
+func broadcastSend(send <-chan Message, conn *net.UDPConn, addr *net.UDPAddr, quit <-chan bool) {
 	for {
+		fmt.Println("trying to send")
 		select {
 		case m := <-send:
 			buf, err := json.Marshal(m)
@@ -105,14 +115,19 @@ func broadcastListen(send <-chan Message, conn *net.UDPConn, addr *net.UDPAddr) 
 }
 
 //Workerthread. Called by BroadcastInit
-func broadcastSend(recv chan<- Message, conn *net.UDPConn) {
+func broadcastListen(recv chan<- Message, conn *net.UDPConn) {
 	for {
 		buf := make([]byte, 512)
 		l, _, err := conn.ReadFrom(buf)
 		if err != nil {
 			fmt.Println("NET: ", err)
+		}
+		var m Message
+		err = json.Unmarshal(buf[:l], &m)
+		if err != nil {
+			fmt.Println("JSON unpacking: ", err)
 		} else {
-			m.Timerecv = time.Now()
+			m.TimeRecv = time.Now()
 			recv <- m
 		}
 	}
@@ -120,12 +135,12 @@ func broadcastSend(recv chan<- Message, conn *net.UDPConn) {
 
 //Called by
 //Sets up the network and returns the id of the elevator
-func NetInit(send <-chan Message, recv chan<- Message, quitch *chan bool) int {
-	addr, iface, err := FindIP()
+func NetInit(send <-chan Message, recv chan<- Message, quitch <-chan bool) int {
+	addr, iface, err := findIP()
 	if err != nil {
 		fmt.Println("Error findig the interface", err)
 		return 0
 	}
 	go BroadcastInit(send, recv, iface, quitch)
-	return FindID(addr)
+	return findID(addr)
 }

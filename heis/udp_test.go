@@ -3,33 +3,40 @@ package udp_test
 //How to test
 //run: go test -v udp_test.go
 
-import ("fmt"
-	"udp"
-	"time"
-	"strconv"
+import (
+	"fmt"
 	"testing"
+	"time"
+	"udp"
 )
 
-func TestUdpModule(t *testing.T){
-	udpListenChan:=make(chan string)
-	udpBroadcastChan:=make(chan string)
-	go udp.Listen(udpListenChan)
-	go udp.Broadcast(udpBroadcastChan)
-	count:=0
+func TestUdpModule(t *testing.T) {
+	var id int
+	toNetwork := make(chan udp.Message, 10)
+	fromNetwork := make(chan udp.Message, 10)
+	quit := make(chan bool)
+	id = udp.NetInit(toNetwork, fromNetwork, quit)
+	fmt.Println("id is: ", id)
+	count := 0
 	for {
-		
-		msg:=strconv.Itoa(count)
-		fmt.Println("sending message",msg)
-		udpBroadcastChan<-msg
+		message := udp.Message{
+			LiftId:    111,
+			Floor:     111,
+			Direction: true,
+			Status:    udp.New,
+			Weight:    5,
+			TimeRecv:  time.Now()}
+		toNetwork <- message
+
 		time.Sleep(time.Second * 1)
-		select{
-		case recv:=<-udpListenChan:
-			fmt.Println("received message",recv)
+		select {
+		case recv := <-fromNetwork:
+			fmt.Println("received message", recv.LiftId)
 		default:
 			fmt.Println("no message")
 		}
 		count++
-		if count>5{
+		if count > 5 {
 			break
 		}
 	}
