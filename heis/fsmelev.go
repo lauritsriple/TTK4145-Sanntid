@@ -15,18 +15,25 @@ type elevFSM struct{
 	destinatedFloor int
 }
 
+
+
+
 func (fsmData elevFSM) LoopIO(){
 	floor := make(chan int,1)
+	stopButtonPressed := make(chan bool,1)
+	obstackleChan := make(chan bool,1)
+	go driver.Driver_btnStopPoller(stopButtonPressed)
 	go driver.Driver_floorSensorPoller(floor)
+	go driver.DriverObstructionPoller(obstacleChan)
+	
 	select{
 	case fsmData.floor <- floor:
 		pass
-	default:
+	case fsmData.stopIsPressed <- stopButtonPressed:
 		pass
+	case fsmData.obstacle <- obstacleChan:
 	}
 
-	stopButtonPressed := make(chan bool,1)
-	go driver.Driver_btnStopPoller(stopButtonPressed)
 	select{
 	case fsmData.stopIsPressed <- stopButtonPressed:
 		pass
@@ -34,8 +41,6 @@ func (fsmData elevFSM) LoopIO(){
 		pass
 	}
 
-	obstackleChan := make(chan bool,1)
-	go driver.DriverObstructionPoller(obstacleChan)
 	select{
 	case fsmData.obstacle <- obstacleChan:
 		pass
