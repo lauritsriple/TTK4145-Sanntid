@@ -1,8 +1,9 @@
 package driver
 
 import (
-	"time"
+	"io"
 	"log"
+	"time"
 )
 
 const N_FLOORS = 4
@@ -10,27 +11,117 @@ const N_LIGHTS = 4
 const N_BUTTONS = 3
 
 //Milliseconds between each polling round
-const POLLRATE = 20*time.Millisecond
+const POLLRATE = 20 * time.Millisecond
 
 type MotorDirection int
+
 const (
-	MD_up = 1
+	MD_up   = 1
 	MD_down = -1
 	MD_stop = 0
 )
-type BtnEvent struct{
-	Floor int
-	Button int
+
+type ByttonType int //Enum for buttons
+const (
+	Up ButtonType = iota
+	Down
+	Command
+	Stop
+	Obstruction
+	door //Not actual button, but used for door light, therefore not exported
+)
+
+type Button struct {
+	Floor  int
+	Button ButtonType
 }
 
-var driverInitialized=false
+type Light struct {
+	Floor  uint
+	Button ButtonType
+	On     bool
+}
 
-func Driver_init() bool{
-	if driverInitialized{
+type LiftStatus struct {
+	Running   bool
+	Floor     uint
+	Direction bool
+	Door      bool
+}
+
+var floorSensorChannels = [N_FLOORS]int{
+	SENSOR_FLOOR1,
+	SENSOR_FLOOR2,
+	SENSOR_FLOOR3,
+	SENSOR_FLOOR4}
+
+var buttons = []int{
+	FLOOR_COMMAND1,
+	FLOOR_COMMAND2,
+	FLOOR_COMMAND3,
+	FLOOR_COMMAND4,
+	FLOOR_UP1,
+	FLOOR_UP2,
+	FLOOR_UP3,
+	FLOOR_UP4,
+	FLOOR_DOWN1,
+	FLOOR_DOWN2,
+	FLOOR_DOWN3,
+	FLOOR_DOWN4,
+	STOP,
+	OBSTRUCTION}
+
+var buttonsKeyType = []int{
+	Command,
+	Command,
+	Command,
+	Command,
+	Up,
+	Up,
+	Up,
+	Up,
+	Down,
+	Down,
+	Down,
+	Down,
+	Stop,
+	Obstruction}
+
+var lightmap = []int{
+	LIGHT_COMMAND1,
+	LIGHT_COMMAND2,
+	LIGHT_COMMAND3,
+	LIGHT_COMMAND4,
+	LIGHT_UP1,
+	LIGHT_UP2,
+	LIGHT_UP3,
+	LIGHT_UP4,
+	LIGHT_DOWN1,
+	LIGHT_DOWN2,
+	LIGHT_DOWN3,
+	LIGHT_DOWN4,
+	LIGHT_STOP,
+	LIGHT_DOOR_OPEN}
+
+var lightKeyType = []int{
+	Command: -1,
+	Up:      3,
+	Down:    7,
+	Stop:    12,
+	door:    13}
+
+var (
+	currentFloor      = -1
+	driverInitialized = false
+	lastPress         [14]bool //Remembers last state of buttons
+)
+
+func Init() bool {
+	if driverInitialized {
 		log.Fatal("ERROR, driver already initialized")
 	} else {
-		driverInitialized=true
-		if io_init()==false {
+		driverInitialized = true
+		if io.Init() == false {
 			log.Fatal("ERROR, could not initialize driver")
 		} else {
 			//sucess
@@ -40,142 +131,85 @@ func Driver_init() bool{
 	return false
 }
 
-//LIGHTS: FLOOR INDICATORS
-var FloorIndicatorChannels = [N_FLOORS] int {
-	LIGHT_FLOOR_IND1,
-	LIGHT_FLOOR_IND2,
+func setLight(lightch chan Light) {
+	select {
+	default:
+		return
+	case light := <-lightch:
+		if light.On {
+			io.SetBit(lightmap[lightKeyType[int(light.Button)]+int(light.Floor)])
+		} else {
+			io.ClearBit(lightmap[lightKeyType[int(light.Button)]+int(light.Floor)])
+		}
+	}
 }
 
-func Driver_setFloorIndicator(floor int){
-	switch floor{
+func SetFloorIndicator(floor int) {
+	if (floor < 1) || (floor > N_FLOORS) {
+		log.Fatal("Floororder out of range: ", floor)
+	}
+	switch floor {
 	case 1:
-		io_clearBit(LIGHT_FLOOR_IND1)
-		io_clearBit(LIGHT_FLOOR_IND2)
+		io.ClearBit(LIGHT_FLOOR_IND1)
+		io.ClearBit(LIGHT_FLOOR_IND2)
 	case 2:
-		io_clearBit(LIGHT_FLOOR_IND1)
-		io_setBit(LIGHT_FLOOR_IND2)
+		io.ClearBit(LIGHT_FLOOR_IND1)
+		io.SetBit(LIGHT_FLOOR_IND2)
 	case 3:
-		io_setBit(LIGHT_FLOOR_IND1)
-		io_clearBit(LIGHT_FLOOR_IND2)
+		io.SetBit(LIGHT_FLOOR_IND1)
+		io.ClearBit(LIGHT_FLOOR_IND2)
 	case 4:
-		io_setBit(LIGHT_FLOOR_IND1)
-		io_setBit(LIGHT_FLOOR_IND2)
+		io.SetBit(LIGHT_FLOOR_IND1)
+		io.SetBit(LIGHT_FLOOR_IND2)
 
 	}
 }
 
-//LIGHTS: UP;DOWN;COMMAND
-var lightChannels = [N_FLOORS][N_LIGHTS] int {
-	{LIGHT_UP1,0,LIGHT_COMMAND1},
-	{LIGHT_UP2,LIGHT_DOWN2,LIGHT_COMMAND2},
-	{LIGHT_UP3,LIGHT_DOWN3,LIGHT_COMMAND3},
-	{0,LIGHT_DOWN4,LIGHT_COMMAND4},
-}
-
-func Driver_setBtnLight(floor int, btn int, val bool){
-	if val{
-		io_setBit(lightChannels[floor][btn])
-	} else{
-		io_clearBit(lightChannels[floor][btn])
-	}
-}
-
-func Driver_setStopLight(val bool){
-	if val{
-		io_setBit(LIGHT_STOP)
-	} else {
-		io_clearBit(LIGHT_STOP)
-	}
-}
-
-func Driver_setDoorLight(val bool){
-	if val{
-		io_setBit(LIGHT_DOOR_OPEN)
-	} else {
-		io_clearBit(LIGHT_DOOR_OPEN)
-	}
-}
-
-//BUTTONS: UP;DOWN;COMMAND
-var btnChannels = [N_FLOORS][N_BUTTONS] int {
-	{BUTTON_UP1,0,BUTTON_COMMAND1},
-	{BUTTON_UP2,BUTTON_DOWN2,BUTTON_COMMAND2},
-	{BUTTON_UP3,BUTTON_DOWN3,BUTTON_COMMAND3},
-	{0,BUTTON_DOWN4,BUTTON_COMMAND4},
-}
-
-func Driver_btnPoller(recv chan <- BtnEvent){
-	var prev [N_FLOORS][N_BUTTONS] int
-
-	for {
-		time.Sleep(POLLRATE)
-		for f:=0; f<N_FLOORS; f++{
-			for b:=0; b<N_BUTTONS; b++{
-				curr:=io_readBit(btnChannels[f][b])
-				if (curr != 0 && curr != prev[f][b]){
-					recv <- BtnEvent{f,b}
-					prev[f][b]=curr
-				}
-			}
+func readButtons(keypress chan<- Button) {
+	for index, key := range buttons {
+		if readButton(index, key) {
+			keypress <- Button{uint(index%4 + 1), buttonsKeyType[index]}
 		}
 	}
 }
 
-func Driver_btnStopPoller(recv chan <- int){
-	var prev int
-	for{
-		time.Sleep(POLLRATE)
-		curr:=io_readBit(STOP)
-		if (curr!=0 && curr!=prev){
-			recv <- curr
-			prev=curr
+func readButton(key int, index int) bool {
+	if io.ReadBit(key) {
+		if !lastPress[index] {
+			lastPress[index] = true
+			return true
 		}
+	} else if lastPress[index] {
+		lastPress[index] = false
 	}
 }
 
-func Driver_obstructionPoller(recv chan <- int){
-	var prev int
-	for{
-		time.Sleep(POLLRATE)
-		curr:=io_readBit(OBSTRUCTION)
-		if (curr!=0 && curr!=prev){
-			recv <- curr
-			prev=curr
+func ReadFloorSensors(floorSeen chan<- int) {
+	atFloor := false
+	for f := 0; f < N_FLOORS; f++ {
+		sensor := io.ReadBit(floorSensorChannels[f])
+		if sensor != 0 && sensor != currentFloor {
+			currentFloor = sensor
+			atFloor = true
+			floorSeen <- sensor
+			return
 		}
+	}
+	if !atFloor && sensor != currentFloor {
+		currentFloor = sensor
+		floorSeen <- uint(sensor)
 	}
 }
 
-//FLOORSENSORS
-var floorSensorChannels = [N_FLOORS] int {
-	SENSOR_FLOOR1,
-	SENSOR_FLOOR2,
-	SENSOR_FLOOR3,
-	SENSOR_FLOOR4,
-}
-
-func Driver_floorSensorPoller(recv chan <- int){
-	var prev int
-	for{
-		time.Sleep(POLLRATE)
-		for f:=0; f<N_FLOORS; f++{
-			curr:=io_readBit(floorSensorChannels[f])
-			if (curr!=0 && f!=prev){
-				recv <- f
-				prev=f
-			}
-		}
-	}
-}
-
-func Driver_setMotorDir(dir MotorDirection){
-	switch dir{
+func SetMotorDir(dir MotorDirection) {
+	switch dir {
 	case MD_stop:
-		io_writeAnalog(MOTOR,0)
+		io.WriteAnalog(MOTOR, 0)
 	case MD_up:
-		io_clearBit(MOTORDIR)
-		io_writeAnalog(MOTOR,2800)
+		io.ClearBit(MOTORDIR)
+		io.WriteAnalog(MOTOR, 2800)
 	case MD_down:
-		io_setBit(MOTORDIR)
-		io_writeAnalog(MOTOR,2800)
+		io.SetBit(MOTORDIR)
+		io.WriteAnalog(MOTOR, 2800)
 	}
 }
