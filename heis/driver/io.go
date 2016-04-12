@@ -1,4 +1,4 @@
-package driver
+package io
 /*
 #cgo CFLAGS: -std=c11
 #cgo LDFLAGS: -lcomedi -lm
@@ -16,7 +16,7 @@ func checkError(err error){
 }
 
 //Public functions
-func io_init() bool {
+func Init() bool {
 	n, err := C.io_init()
 	checkError(err)
 	if C.int(n) == 0 {
@@ -24,30 +24,30 @@ func io_init() bool {
 	} else {
 		return true
 	}
-}
 
-func io_setBit(channel int){
+
+func SetBit(channel int){
 	_,err := C.io_set_bit(C.int(channel))
 	checkError(err)
 }
 
-func io_clearBit(channel int){
+func ClearBit(channel int){
 	_,err := C.io_clear_bit(C.int(channel))
 	checkError(err)
 }
 
-func io_writeAnalog(channel,value int){
+func WriteAnalog(channel,value int){
 	_,err := C.io_write_analog(C.int(channel),C.int(value))
 	checkError(err)
 }
 
-func io_readBit(channel int) int {
+func ReadBit(channel int) int {
 	n,err := C.io_read_bit(C.int(channel))
 	checkError(err)
 	return int(n)
 }
 
-func io_readAnalog(channel int) int{
+func ReadAnalog(channel int) int{
 	n,err := C.io_read_analog(C.int(channel))
 	checkError(err)
 	return int(n)
