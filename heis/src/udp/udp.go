@@ -57,7 +57,7 @@ func findIP() (string, *net.Interface, error) {
 	for _, iface := range ifaces {
 		addrs, _ := iface.Addrs()
 		for _, a := range addrs {
-			if strings.Contains(a.String(), "192.") {
+			if strings.Contains(a.String(), "129.") {
 				return a.String(), &iface, nil
 			}
 		}
