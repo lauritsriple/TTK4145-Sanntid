@@ -62,100 +62,141 @@ func (fsmData elevFSM) LoopIO(){
 	// }
 }
 
-func Initialize() bool{
-	//driver.init()
-	DirectionChan := make(chan int,1)
-	LightChan := make(chan driver.Ligth,5)// namechange
-	LiftStatusChan := make(chan int,1)
-	DestinatedFloorChan := make(chan int,1)// messages from bypassed trough driver from queue
-	FloorSensorChan := make(chan int,1)
-	ButtonChan := make(chan driver.Button,1)
-	for{
-		driver.ReadButtons(ButtonChan)
-		driver.ReadFloorSensor(FloorSensorChan)
+func Init(orderedFloorsCh <- chan uint,lightCh <- chan driver.Light, statusCh * chan driver.LiftStatus, buttonCh chan<- driver.Button, quitCh <- chan bool ) bool{
+	if !driver.init(){
+		log.Fatal("could not initialize driver")
+		return false
 	}
-
-	if <-FloorSensorChan{
-		driver.SetMotorDir(driver.MD_up)//
-		for (!<-FloorSensorChan){
-			// elevating
-		}
-		driver.SetMotorDir(driver.MD_stop)
-	}
-	return 1;
-
+	// clear all lights and stop motor
+	driver.ClearAll()
+	log.Println("cleared all lights and stopped motor.")
+	floorSensorCh = make(chan uint,5)
+	doorTimerCh = make(chan bool,2)
+	motorDirectionCh = make(chan driver.MotorDirection, 5)
+	go driverLoop(lightCh, buttonCh, floorSensorCh, motorDirectionCh,quitCh)
+	go executeOrder(orderedFloorCh, lightCh, statusCh, floorSensorCh, doorTimerCh, motorDirectionCh, quitCh)
+	return true
 }
 
-func (fsmData elevFSM)GoToFloor(){
-	switch <-DestinatedFloor{
-		case 0:	
-			LightChan<- driver.Light{0,driver.Stop,true}
-			LiftStatusChan<-driver.LiftStatus{false,driver.currentFloor,false,false}
-			//wait - reset queue - continue
-		case 1:
-			driver.SetFloorIndicator(<-driver.currentFloor)// probably not best way 
-			if fsmData.floor != 1{
-				driver.SetMotorDir(driver.MD_down)
-				LightChan <-driver.Light{0,driver.Down,true}
-				LiftStatusChan<-driver.LiftStatus{true,driver.currentFloor,false,false}//Direction?
+func driverLoop(lightCh <- chan driver.Light, buttonCh <- chan driver.Button, floorSensorCh <- chan uint, motorDirectionCh <-chan driver.MotorDirection ,quitCh <- chan bool){
+	for{
+		select{
+		case <-quitCh:
+			driver.ClearAll()
+			return false
+		default:
+			driver.ReadButtons(buttonCh)
+			driver.ReadFloorSensor(floorSensorCh)
+			driver.RunMotor(motorDirectionCh)
+			driver.SetLight(lightCh)
+			time.Sleep(5 * time.Millisecond)
+		}
+	}
+}
 
-			} else {
-				driver.SetMotorDir(driver.MD_stop)
-				LightChan <-driver.Light{1,driver.Command,false}// maybe make this code more readable?
-				LiftStatusChan<-driver.LiftStatus{false,driver.currentFloor,false,true}//Direction?
-				//LightChan <-driver.Light{0,driver.door,true}
-				//wait
-				//LightChan <-driver.Light{0,driver.door,false}
-				}
-		case 2:
-			if fsmData.floor < 2{
-				driver.SetMotorDir(driver.MD_up)
-				LiftStatusChan<-driver.LiftStatus{true,driver.currentFloor,false,false}//Direction?
-			} else if fsmData.floor != 2 {
-				driver.SetMotorDir(driver.MD_down)
-				LiftStatusChan<-driver.LiftStatus{true,driver.currentFloor,false,false}//Direction?
-			} else {
-				driver.SetMotorDir(driver.MD_stop)
-				LightChan <-driver.Light{2,driver.Command,false}
-				LiftStatusChan<-driver.LiftStatus{false,driver.currentFloor,false,true}//Direction?
-				//LightChan <-driver.Light{0,driver.door,true}
-				//wait
-				//LightChan <-driver.Light{0,driver.door,false}
+func executeOrder(orderedFloorCh <- chan uint, lightCh chan <- driver.Light, statusCh chan <- driver.LiftStatus, floorSensorCh <-chan uint, doorTimerCh chan bool, motorDirectionCh chan <- driver.MotorDirection, quitCh <-chan bool){
+	var (
+		currentFloor uint
+		stopFloor uint
+		status driver.LiftStatus
+		)
+	status.Direction = false
 
-			}
-		case 3:
-			if fsmData.floor > 3{
-				driver.SetMotorDir(driver.MD_down)
-				LiftStatusChan<-driver.LiftStatus{true,driver.currentFloor,false,false}//Direction?
-			} else if fsmData.floor != 3{
-				driver.SetMotorDir(driver.MD_up)
-				LiftStatusChan<-driver.LiftStatus{true,driver.currentFloor,false,false}//Direction?
-			} else {
-				driver.SetMotorDir(driver.MD_stop)
-				LightChan <-driver.Light{3,driver.Command,false}
-				LiftStatusChan<-driver.LiftStatus{false,driver.currentFloor,false,true}//Direction?
-				//LightChan <-driver.Light{0,driver.door,true}
-				//wait
-				//LightChan <-driver.Light{0,driver.door,false}
-
-
-			}
-		case 4:
-			if fsmData.floor != 4{
-				driver.SetMotorDir(driver.MD_up)
-				LiftStatusChan<-driver.LiftStatus{true,driver.currentFloor,false,false}//Direction?
-			} else {
-				driver.SetMotorDir(driver.MD_stop)
-				LightChan <-driver.Light{4,driver.Command,false}
-				LiftStatusChan<-driver.LiftStatus{false,driver.currentFloor,false,true}//Direction?
-				//LightChan <-driver.Light{0,driver.door,true}
-				//wait
-				//LightChan <-driver.Light{0,driver.door,false}
-
-
+	// not in state, go up until floor
+	motorDirectionCh <-driver.MotorDirection{driver.MD_up}
+	for{
+		currentFloor = <-floorSensorCh
+		if currentFloor != 0{
+			log.Println("found floor")
+			break
+		}
+	}
+	motorDirectionCh <-driver.MotorDirection{driver.MD_stop}
+	status.Floor = currentFloor
+	status.Running = false
+	status.Door = false
+	statusCh <-status
+	for{
+		select{
+		case <-quitCh:
+			return
+		case stopFloor = <-orderedFloorCh: // fix orderes outside range?
+			// got new order
+		case <-doorTimerCh:
+			lightCh<-driver.Ligth{0,driver.door, false}
+			status.Door = false
+			statusCh <-status
+		case currentFloor = <-floorSensorCh:
+			updateStatus(currentFloor, &status)
+		default:
+			time.Sleep(5*time.Millisecond)
+			if stopFloor != 0{
+				stopAtFloor(currentFloor, motorDirectionCh, &status, &stopFloor)
+				goToFloor(currentFloor, &status, &stopFloor)
 			}
 		}
 	}
+}
+
+func stopAtFloor(currentFloor uint, status *driver.LiftStatus, stopFloor *uint){//check if input is correct
+	if status.Floor == stopFloor{
+		motorDirectionCh <-driver.MotorDirection{driver.MD_stop}
+		status.Running = false
+		status.Door = true
+		lightCh <-driver.Light{0, driver.door, true}
+		go func(){
+			time.Sleep(3* time.Second)
+			doorTimerCh<- true
+		}
+		*stopFloor = 0
+		statusCh <-*status
+	}
+}
+
+
+func goToFloor(currentFloor uint, status *driver.LiftStatus, stopFloor *uint){// check if input is correct
+	if !status.Door && !status.Running{
+		if currenFloor < stopFloor{
+			motorDirectionCh <- driver.MotorDirection{driver.MD_up}
+			status.Direction = driver.MD_up
+		} else {
+			motorDirectionCh <- driver.MotorDirection{driver.MD_down}
+			status.Direction = driver.MD_down
+		}
+		status.Running = true
+		statusCh <- *status
+	}
+}
+
+func updateStatus(currentFloor uint, status *driver.LiftStatus){
+	switch currentFloor{
+		case 0:
+			if status.Door{
+				log.Fatal("lift should not be mooving, door is open")
+			}
+			if !status.Running{
+				log.Fatal("lift should not be mooving, motor is off")
+			}
+		case 1,4:
+			motorDirectionCh <-driver.MotorDirection{driver.MD_stop}
+			status.Floor = currentFloor
+			status.Running = false
+			statusCh <-*status
+		case 2,3:
+			if currentFloor != status.Floor{
+				status.Floor = currentFloor
+				statusCh <- *status
+			}
+		default:
+			log.Println("found unknown floor", currentFloor)
+	}
+}
+
+
+
+
+
+
 
 
 
