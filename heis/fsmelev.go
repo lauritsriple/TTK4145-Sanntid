@@ -69,6 +69,12 @@ func Initialize() bool{
 	LiftStatusChan := make(chan int,1)
 	DestinatedFloorChan := make(chan int,1)// messages from bypassed trough driver from queue
 	FloorSensorChan := make(chan int,1)
+	ButtonChan := make(chan driver.Button,1)
+	for{
+		driver.ReadButtons(ButtonChan)
+		driver.ReadFloorSensor(FloorSensorChan)
+	}
+
 	if <-FloorSensorChan{
 		driver.SetMotorDir(driver.MD_up)//
 		for (!<-FloorSensorChan){
@@ -81,12 +87,8 @@ func Initialize() bool{
 }
 
 func (fsmData elevFSM)GoToFloor(){
-	for !Initialize(){
-	// wait
-	}
 	switch <-DestinatedFloor{
-		case 0:
-			driver.SetMotorDir(driver.MD_stop)
+		case 0:	
 			LightChan<- driver.Light{0,driver.Stop,true}
 			LiftStatusChan<-driver.LiftStatus{false,driver.currentFloor,false,false}
 			//wait - reset queue - continue
@@ -106,7 +108,6 @@ func (fsmData elevFSM)GoToFloor(){
 				//LightChan <-driver.Light{0,driver.door,false}
 				}
 		case 2:
-			driver.SetFloorIndicator(<-driver.currentFloor))
 			if fsmData.floor < 2{
 				driver.SetMotorDir(driver.MD_up)
 				LiftStatusChan<-driver.LiftStatus{true,driver.currentFloor,false,false}//Direction?
@@ -123,7 +124,6 @@ func (fsmData elevFSM)GoToFloor(){
 
 			}
 		case 3:
-			driver.SetFloorIndicator(<-driver.currentFloor))
 			if fsmData.floor > 3{
 				driver.SetMotorDir(driver.MD_down)
 				LiftStatusChan<-driver.LiftStatus{true,driver.currentFloor,false,false}//Direction?
@@ -141,7 +141,6 @@ func (fsmData elevFSM)GoToFloor(){
 
 			}
 		case 4:
-			driver.SetFloorIndicator(<-driver.currentFloor))
 			if fsmData.floor != 4{
 				driver.SetMotorDir(driver.MD_up)
 				LiftStatusChan<-driver.LiftStatus{true,driver.currentFloor,false,false}//Direction?
