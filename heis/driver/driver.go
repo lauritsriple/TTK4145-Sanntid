@@ -165,7 +165,7 @@ func SetFloorIndicator(floor int) {
 	}
 }
 
-func readButtons(keypress chan<- Button) {
+func ReadButtons(keypress chan<- Button) {
 	for index, key := range buttons {
 		if readButton(index, key) {
 			keypress <- Button{uint(index%4 + 1), buttonsKeyType[index]}
