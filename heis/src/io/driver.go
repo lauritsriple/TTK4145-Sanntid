@@ -1,7 +1,6 @@
-package driver
+package io
 
 import (
-	"io"
 	"log"
 	"time"
 )
@@ -16,12 +15,13 @@ const POLLRATE = 20 * time.Millisecond
 type MotorDirection int
 
 const (
-	MD_up   = 1
-	MD_down = -1
-	MD_stop = 0
+	MD_up MotorDirection = iota
+	MD_down
+	MD_stop
 )
 
-type ByttonType int //Enum for buttons
+type ButtonType int //Enum for buttons
+
 const (
 	Up ButtonType = iota
 	Down
@@ -56,22 +56,22 @@ var floorSensorChannels = [N_FLOORS]int{
 	SENSOR_FLOOR4}
 
 var buttons = []int{
-	FLOOR_COMMAND1,
-	FLOOR_COMMAND2,
-	FLOOR_COMMAND3,
-	FLOOR_COMMAND4,
-	FLOOR_UP1,
-	FLOOR_UP2,
-	FLOOR_UP3,
-	FLOOR_UP4,
-	FLOOR_DOWN1,
-	FLOOR_DOWN2,
-	FLOOR_DOWN3,
-	FLOOR_DOWN4,
+	BUTTON_COMMAND1,
+	BUTTON_COMMAND2,
+	BUTTON_COMMAND3,
+	BUTTON_COMMAND4,
+	BUTTON_UP1,
+	BUTTON_UP2,
+	BUTTON_UP3,
+	BUTTON_UP4,
+	BUTTON_DOWN1,
+	BUTTON_DOWN2,
+	BUTTON_DOWN3,
+	BUTTON_DOWN4,
 	STOP,
 	OBSTRUCTION}
 
-var buttonsKeyType = []int{
+var buttonsKeyType = []ButtonType{
 	Command,
 	Command,
 	Command,
@@ -116,12 +116,12 @@ var (
 	lastPress         [14]bool //Remembers last state of buttons
 )
 
-func Init() bool {
+func driver_Init() bool {
 	if driverInitialized {
 		log.Fatal("ERROR, driver already initialized")
 	} else {
 		driverInitialized = true
-		if io.Init() == false {
+		if io_Init() == false {
 			log.Fatal("ERROR, could not initialize driver")
 		} else {
 			//sucess
@@ -137,9 +137,9 @@ func setLight(lightch chan Light) {
 		return
 	case light := <-lightch:
 		if light.On {
-			io.SetBit(lightmap[lightKeyType[int(light.Button)]+int(light.Floor)])
+			SetBit(lightmap[lightKeyType[int(light.Button)]+int(light.Floor)])
 		} else {
-			io.ClearBit(lightmap[lightKeyType[int(light.Button)]+int(light.Floor)])
+			ClearBit(lightmap[lightKeyType[int(light.Button)]+int(light.Floor)])
 		}
 	}
 }
@@ -150,17 +150,17 @@ func SetFloorIndicator(floor int) {
 	}
 	switch floor {
 	case 1:
-		io.ClearBit(LIGHT_FLOOR_IND1)
-		io.ClearBit(LIGHT_FLOOR_IND2)
+		ClearBit(LIGHT_FLOOR_IND1)
+		ClearBit(LIGHT_FLOOR_IND2)
 	case 2:
-		io.ClearBit(LIGHT_FLOOR_IND1)
-		io.SetBit(LIGHT_FLOOR_IND2)
+		ClearBit(LIGHT_FLOOR_IND1)
+		SetBit(LIGHT_FLOOR_IND2)
 	case 3:
-		io.SetBit(LIGHT_FLOOR_IND1)
-		io.ClearBit(LIGHT_FLOOR_IND2)
+		SetBit(LIGHT_FLOOR_IND1)
+		ClearBit(LIGHT_FLOOR_IND2)
 	case 4:
-		io.SetBit(LIGHT_FLOOR_IND1)
-		io.SetBit(LIGHT_FLOOR_IND2)
+		SetBit(LIGHT_FLOOR_IND1)
+		SetBit(LIGHT_FLOOR_IND2)
 
 	}
 }
@@ -174,7 +174,7 @@ func ReadButtons(keypress chan<- Button) {
 }
 
 func readButton(key int, index int) bool {
-	if io.ReadBit(key) {
+	if ReadBit(key) {
 		if !lastPress[index] {
 			lastPress[index] = true
 			return true
@@ -182,12 +182,13 @@ func readButton(key int, index int) bool {
 	} else if lastPress[index] {
 		lastPress[index] = false
 	}
+	return false
 }
 
 func ReadFloorSensors(floorSeen chan<- int) {
 	atFloor := false
 	for f := 0; f < N_FLOORS; f++ {
-		sensor := io.ReadBit(floorSensorChannels[f])
+		sensor := ReadBit(floorSensorChannels[f])
 		if sensor != 0 && sensor != currentFloor {
 			currentFloor = sensor
 			atFloor = true
@@ -204,12 +205,12 @@ func ReadFloorSensors(floorSeen chan<- int) {
 func SetMotorDir(dir MotorDirection) {
 	switch dir {
 	case MD_stop:
-		io.WriteAnalog(MOTOR, 0)
+		WriteAnalog(MOTOR, 0)
 	case MD_up:
-		io.ClearBit(MOTORDIR)
-		io.WriteAnalog(MOTOR, 2800)
+		ClearBit(MOTORDIR)
+		WriteAnalog(MOTOR, 2800)
 	case MD_down:
-		io.SetBit(MOTORDIR)
-		io.WriteAnalog(MOTOR, 2800)
+		SetBit(MOTORDIR)
+		WriteAnalog(MOTOR, 2800)
 	}
 }

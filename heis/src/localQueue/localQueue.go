@@ -78,7 +78,7 @@ func GetOrder(currentFloor uint, direction bool) (uint, bool) {
 		if nextStop := checkUp(currentFloor, N_FLOORS); nextStop > 0 {
 			return nextStop, true
 		} else if nextStop := checkDown(N_FLOORS, 1); nextStop > 0 {
-			return netStop, false
+			return nextStop, false
 		} else {
 			return checkUp(1, N_FLOORS), true
 		}
