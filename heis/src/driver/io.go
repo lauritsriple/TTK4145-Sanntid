@@ -1,4 +1,4 @@
-package io
+package driver
 /*
 #cgo CFLAGS: -std=c11
 #cgo LDFLAGS: -lcomedi -lm
@@ -19,11 +19,7 @@ func checkError(err error){
 func io_Init() bool {
 	n, err := C.io_init()
 	checkError(err)
-	if C.int(n) == 0 {
-		return false
-	} else {
-		return true
-	}
+	return citob(n)
 }
 
 
@@ -42,15 +38,23 @@ func WriteAnalog(channel,value int){
 	checkError(err)
 }
 
-func ReadBit(channel int) int {
+func ReadBit(channel int) bool {
 	n,err := C.io_read_bit(C.int(channel))
 	checkError(err)
-	return int(n)
+	return citob(n)
 }
 
 func ReadAnalog(channel int) int{
 	n,err := C.io_read_analog(C.int(channel))
 	checkError(err)
 	return int(n)
+}
+
+func citob(i C.int) bool{
+	if i==0{
+		return false
+	} else {
+		return true
+	}
 }
 

@@ -1,9 +1,9 @@
 package control
 
 import (
-	"../udp"
-	"../driver"
-	"../localQueue"
+	"udp"
+	"driver"
+	"localQueue"
 	"log"
 	"time"
 )
@@ -18,17 +18,17 @@ var(
 	maxFloor=driver.N_FLOORS
 	button driver.Button
 	message udp.Message
+	quit:=make(chan bool)
 )
 
 func RunLift(quit *chan bool){
-	quit *chan bool
 	buttonPress:=make(chan driver.Button,5)
 	status:=make(chan driver.Status,5)
 	toNetwork=make(chan udp.Message,10)
 	fromNetwork=make(chan udp.Message,10)
-	myID=udp.NetInit(toNetwork,fromNetwork,quit)
-	fsm.Init(floorOrder,setLight,status,buttonPress,quit)
-	restoreBackup()
+	myID=udp.NetInit(&toNetwork,&fromNetwork,&quit)
+	fsm.Init(&floorOrder,&setLight,&status,&buttonPress,&quit)
+	restoreBackup(setLight)
 	liftStatus <- status
 	ticker1:=time.NewTicker(10*time.Millisecond).C
 	ticker2:=time.NewTicker(5*time.Millisecond).C
@@ -38,14 +38,14 @@ func RunLift(quit *chan bool){
 		case button=<-buttonPress:
 			newKeypress(button)
 		case liftStatus=<-status:
-			runQueue()
+			runQueue(liftStatus,floorOrder)
 		case message=<-fromNetwork:
 			newMessage(message)
 			orderLight(message)
 		case <-ticker1:
 			checkTimeout()
 		case <-ticker2:
-			runQueue()
+			runQueue(liftStatus,floorOrder)
 		case <-*quit:
 			return
 		}

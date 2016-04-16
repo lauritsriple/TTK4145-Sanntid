@@ -1,8 +1,8 @@
-package messageparser
+package control
 
 import (
-	"../udp"
-	"../localQueue"
+	"udp"
+	"localQueue"
 	"log"
 	"time"
 )
@@ -24,7 +24,7 @@ func addMessage(floor uint, direction bool,toNetwork chan<- udp.Message){
 	message:= udp.Message{
 		LiftId:myID,
 		Floor:floor,
-		Direction,direction,
+		Direction:direction,
 		Status: udp.New,
 		Weight: cost(floor,direction),
 		TimeRecv:time.Now()}
@@ -103,9 +103,9 @@ func checkTimeout(){
 			timediff:= time.Now().Sub(val.TimeRecv)
 			if timediff >((3*newTimeout)*time.Milisecond){
 				newOrderTimeout(key,3)
-			}else if timediff >((2*newTimeout)*time.Millisecond){
+			} else if timediff >((2*newTimeout)*time.Millisecond){
 				newOrderTimeout(key,2)
-			}else if timediff >((1* newTimeout)*time.Millisecond){
+			} else if timediff >((1* newTimeout)*time.Millisecond){
 				newOrderTimeout(key,1)
 			}
 		} else if val.Status == udp.New && val.LiftId != myID{
@@ -114,7 +114,7 @@ func checkTimeout(){
 				acceptedOrderTimeout(key,3)
 			} else if timediff >((3*acceptedTimeout)*time.Second){
 				acceptedOrderTimeout(key,2)
-			} else if timediff >((2*acceptedTimeout=*time.Second){
+			} else if timediff >((2*acceptedTimeout)*time.Second){
 				acceptedOrderTimeout(key,1)
 			}
 		} else if val.Status == udp.Accepted && val.LiftIf==myID {
@@ -140,7 +140,7 @@ func newOrderTimeout(key,critical uint){
 			takeOrder(key)
 		}
 	case 1:
-		if globalQueue[key]==myID{
+		if globalQueue[key].LiftId==myID{
 			takeOrder(key)
 		}
 	}
@@ -195,7 +195,7 @@ func cost(reqFloor uint, reqDir bool) int{
 		} else{
 			return N_FLOORS+1-diff(reqFloor,statusFloor)
 		}
-	}else if reqDir == statusDir{
+	} else if reqDir == statusDir{
 		if (statusDir && reqFloor > statusFloor) || (!statusDir && reqFloor < statusFloor){
 			return N_FLOORS + 1 - diff(reqFloor,statusFloor)
 		}
@@ -207,13 +207,13 @@ func cost(reqFloor uint, reqDir bool) int{
 	return 1
 }
 
-diff(a uint, b uint){
+func diff(a uint, b uint) uint{
 	x:=int(a)
 	y:=int(b)
 	c:=x-y
 	if c < 0{
-		return c*-1
+		return uint(c*-1)
 	} else{
-		return c
+		return uint(c)
 	}
 }

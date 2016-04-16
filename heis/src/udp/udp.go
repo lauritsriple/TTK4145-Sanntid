@@ -32,7 +32,7 @@ const (
 type Message struct {
 	LiftId    int
 	ReassId   int
-	Floor     int
+	Floor     uint
 	Direction bool
 	Status    Orderstatus
 	Weight    int

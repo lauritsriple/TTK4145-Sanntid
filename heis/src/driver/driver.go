@@ -1,4 +1,4 @@
-package io
+package driver
 
 import (
 	"log"
@@ -32,7 +32,7 @@ const (
 )
 
 type Button struct {
-	Floor  int
+	Floor  uint
 	Button ButtonType
 }
 
@@ -144,7 +144,7 @@ func setLight(lightch chan Light) {
 	}
 }
 
-func SetFloorIndicator(floor int) {
+func setFloorIndicator(floor int) {
 	if (floor < 1) || (floor > N_FLOORS) {
 		log.Fatal("Floororder out of range: ", floor)
 	}
@@ -185,20 +185,21 @@ func readButton(key int, index int) bool {
 	return false
 }
 
-func ReadFloorSensors(floorSeen chan<- int) {
+func ReadFloorSensors(floorSeen chan<- uint) {
 	atFloor := false
 	for f := 0; f < N_FLOORS; f++ {
 		sensor := ReadBit(floorSensorChannels[f])
-		if sensor != 0 && sensor != currentFloor {
-			currentFloor = sensor
+		if sensor && (f+1) != currentFloor {
+			currentFloor = f+1
+			floorSeen <- uint(currentFloor)
+			setFloorIndicator(f+1)
 			atFloor = true
-			floorSeen <- sensor
 			return
 		}
 	}
-	if !atFloor && sensor != currentFloor {
-		currentFloor = sensor
-		floorSeen <- uint(sensor)
+	if !atFloor && currentFloor !=0{
+		currentFloor = 0
+		floorSeen <- uint(0)
 	}
 }
 
