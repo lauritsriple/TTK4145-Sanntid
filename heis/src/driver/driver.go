@@ -216,9 +216,29 @@ func SetMotorDir(dir MotorDirection) {
 	}
 }
 
+func ClearLight(light Light){
+	Io_ClearBit(lightmap[lightKeyType[int(light.Button)]+int(light.Floor)])
+}
+
 func ClearAll(){
 	SetMotorDir(MD_stop)
-	// lights off
+	light Light
+	light.On  = false;
+	for f := 0; f< N_FLOORS; f++{
+		light.Floor = f
+		light.Button = UP
+		ClearLight(light Light)
+		light.Button = Down
+ 		ClearLight(light Light)
+		light.Button = Command
+	 	ClearLight(light Light)
+	}
+	light.Button = Stop
+	ClearLight(light Light)
+	light.Button = Obstruction
+	ClearLight(light Light)
+	light.Button = Door
+	ClearLight(light Light)
 }
 
 func RunMotor(direction <-chan MotorDirection){
