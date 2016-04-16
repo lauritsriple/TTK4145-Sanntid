@@ -45,7 +45,7 @@ type Light struct {
 type LiftStatus struct {
 	Running   bool
 	Floor     uint // why?  	(driver.currentFloor)
-	Direction bool // better?	(Direction MotorDirection)
+	Direction MotorDirection // better?	(Direction MotorDirection)
 	Door      bool
 }
 
@@ -116,12 +116,12 @@ var (
 	lastPress         [14]bool //Remembers last state of buttons
 )
 
-func driver_Init() bool {
+func Init() bool {
 	if driverInitialized {
 		log.Fatal("ERROR, driver already initialized")
 	} else {
 		driverInitialized = true
-		if io_Init() == false {
+		if Io_Init() == false {
 			log.Fatal("ERROR, could not initialize driver")
 		} else {
 			//sucess
@@ -137,9 +137,9 @@ func setLight(lightch chan Light) {
 		return
 	case light := <-lightch:
 		if light.On {
-			SetBit(lightmap[lightKeyType[int(light.Button)]+int(light.Floor)])
+			Io_SetBit(lightmap[lightKeyType[int(light.Button)]+int(light.Floor)])
 		} else {
-			ClearBit(lightmap[lightKeyType[int(light.Button)]+int(light.Floor)])
+			Io_ClearBit(lightmap[lightKeyType[int(light.Button)]+int(light.Floor)])
 		}
 	}
 }
@@ -150,17 +150,17 @@ func setFloorIndicator(floor int) {
 	}
 	switch floor {
 	case 1:
-		ClearBit(LIGHT_FLOOR_IND1)
-		ClearBit(LIGHT_FLOOR_IND2)
+		Io_ClearBit(LIGHT_FLOOR_IND1)
+		Io_ClearBit(LIGHT_FLOOR_IND2)
 	case 2:
-		ClearBit(LIGHT_FLOOR_IND1)
-		SetBit(LIGHT_FLOOR_IND2)
+		Io_ClearBit(LIGHT_FLOOR_IND1)
+		Io_SetBit(LIGHT_FLOOR_IND2)
 	case 3:
-		SetBit(LIGHT_FLOOR_IND1)
-		ClearBit(LIGHT_FLOOR_IND2)
+		Io_SetBit(LIGHT_FLOOR_IND1)
+		Io_ClearBit(LIGHT_FLOOR_IND2)
 	case 4:
-		SetBit(LIGHT_FLOOR_IND1)
-		SetBit(LIGHT_FLOOR_IND2)
+		Io_SetBit(LIGHT_FLOOR_IND1)
+		Io_SetBit(LIGHT_FLOOR_IND2)
 
 	}
 }
@@ -174,7 +174,7 @@ func ReadButtons(keypress chan<- Button) {
 }
 
 func readButton(key int, index int) bool {
-	if ReadBit(key) {
+	if Io_ReadBit(key) {
 		if !lastPress[index] {
 			lastPress[index] = true
 			return true
@@ -188,7 +188,7 @@ func readButton(key int, index int) bool {
 func ReadFloorSensors(floorSeen chan<- uint) {
 	atFloor := false
 	for f := 0; f < N_FLOORS; f++ {
-		sensor := ReadBit(floorSensorChannels[f])
+		sensor := Io_ReadBit(floorSensorChannels[f])
 		if sensor && (f+1) != currentFloor {
 			currentFloor = f+1
 			floorSeen <- uint(currentFloor)
@@ -206,12 +206,12 @@ func ReadFloorSensors(floorSeen chan<- uint) {
 func SetMotorDir(dir MotorDirection) {
 	switch dir {
 	case MD_stop:
-		WriteAnalog(MOTOR, 0)
+		Io_WriteAnalog(MOTOR, 0)
 	case MD_up:
-		ClearBit(MOTORDIR)
-		WriteAnalog(MOTOR, 2800)
+		Io_ClearBit(MOTORDIR)
+		Io_WriteAnalog(MOTOR, 2800)
 	case MD_down:
-		SetBit(MOTORDIR)
-		WriteAnalog(MOTOR, 2800)
+		Io_SetBit(MOTORDIR)
+		Io_WriteAnalog(MOTOR, 2800)
 	}
 }

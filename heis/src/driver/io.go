@@ -16,35 +16,35 @@ func checkError(err error){
 }
 
 //Public functions
-func io_Init() bool {
+func Io_Init() bool {
 	n, err := C.io_init()
 	checkError(err)
 	return citob(n)
 }
 
 
-func SetBit(channel int){
+func Io_SetBit(channel int){
 	_,err := C.io_set_bit(C.int(channel))
 	checkError(err)
 }
 
-func ClearBit(channel int){
+func Io_ClearBit(channel int){
 	_,err := C.io_clear_bit(C.int(channel))
 	checkError(err)
 }
 
-func WriteAnalog(channel,value int){
+func Io_WriteAnalog(channel,value int){
 	_,err := C.io_write_analog(C.int(channel),C.int(value))
 	checkError(err)
 }
 
-func ReadBit(channel int) bool {
+func Io_ReadBit(channel int) bool {
 	n,err := C.io_read_bit(C.int(channel))
 	checkError(err)
 	return citob(n)
 }
 
-func ReadAnalog(channel int) int{
+func Io_ReadAnalog(channel int) int{
 	n,err := C.io_read_analog(C.int(channel))
 	checkError(err)
 	return int(n)
