@@ -44,7 +44,7 @@ func executeOrder(orderedFloorCh <-chan uint, lightCh chan<- driver.Light, statu
 		stopFloor uint
 		status driver.LiftStatus
 		)
-	status.Direction = driver.MD_stop
+	status.Direction = false
 
 	// not in state, go up until floor
 	motorDirectionCh <-driver.MD_up
@@ -102,10 +102,10 @@ func goToFloor(currentFloor uint, status *driver.LiftStatus, stopFloor *uint, mo
 	if !status.Door && !status.Running{
 		if currentFloor < *stopFloor{
 			motorDirectionCh <- driver.MD_up
-			status.Direction = driver.MD_up
+			status.Direction = true
 		} else {
 			motorDirectionCh <- driver.MD_down
-			status.Direction = driver.MD_down
+			status.Direction = false
 		}
 		status.Running = true
 		statusCh <- *status

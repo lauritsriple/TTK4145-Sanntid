@@ -5,7 +5,7 @@ import (
 	"driver"
 	"log"
 	"time"
-	"localQueue"
+	"localqueue"
 	"fsmelev"
 )
 
@@ -15,33 +15,32 @@ var(
 	lastOrder=uint(0)
 	floorOrder=make(chan uint,5)
 	setLight=make(chan driver.Light,5)
-	liftStatus=driver.LiftStatus
-	maxFloor=driver.N_FLOORS
+	liftStatus driver.LiftStatus
 	button driver.Button
 	message udp.Message
-	quit=make(chan bool)
+	quitCh=make(chan bool,2)
+	toNetwork=make(chan udp.Message,10)
+	fromNetwork=make(chan udp.Message,10)
 )
 
 func RunLift(quit *chan bool){
 	var buttonPress=make(chan driver.Button,5)
 	var status=make(chan driver.LiftStatus,5)
-	var toNetwork=make(chan udp.Message,10)
-	var fromNetwork=make(chan udp.Message,10)
-	myID=udp.NetInit(&toNetwork,&fromNetwork,&quit)
-	fsmelev.Init(&floorOrder,&setLight,&status,&buttonPress,&quit)
-	restoreBackup(setLight)
-	liftStatus <- status
+	myID=udp.NetInit(toNetwork,fromNetwork,quitCh)
+	fsmelev.Init(floorOrder,setLight,status,buttonPress,quitCh)
+	restoreBackup()
+	liftStatus =<- status
 	ticker1:=time.NewTicker(10*time.Millisecond).C
 	ticker2:=time.NewTicker(5*time.Millisecond).C
 	log.Println("Network UP \n Driver UP \n My id:",myID)
 	for {
 		select{
 		case button=<-buttonPress:
-			newKeypress(button)
+			newKeyPress(button)
 		case liftStatus=<-status:
 			runQueue(liftStatus,floorOrder)
 		case message=<-fromNetwork:
-			newMessage(message)
+			newMessage(message.Floor,message.Direction)
 			orderLight(message)
 		case <-ticker1:
 			checkTimeout()
@@ -86,8 +85,8 @@ func runQueue(liftStatus driver.LiftStatus, floorOrder chan<- uint){
 		}
 	}
 
-	// Get order from localQueue
-	order,direction:=localQueue.GetOrder(floor,liftStatus.Direction)
+	// Get order from localqueue
+	order,direction:=localqueue.GetOrder(floor,liftStatus.Direction)
 	// Reported status is the ordered floor and door open
 	if liftStatus.Floor == order && liftStatus.Door{
 		removeFromQueue(order,direction)
@@ -107,9 +106,9 @@ func runQueue(liftStatus driver.LiftStatus, floorOrder chan<- uint){
 }
 
 // Called by runQueue
-func removeFromQueue(floor uint, direction bool,setLight chan<- driver.Light){
-	localQueue.DeleteLocalOrder(floor,direction)
-	messageparser.DelMessage(floor,direction)
+func removeFromQueue(floor uint, direction bool){
+	localqueue.DeleteLocalOrder(floor,direction)
+	delMessage(floor,direction)
 	setLight <- driver.Light{floor,driver.Command,false}
 	setOrderLight(floor,direction,false)
 }
@@ -126,17 +125,25 @@ func orderLight(message udp.Message){
 	}
 }
 
+func setOrderLight(floor uint, direction bool, on bool){
+	if direction{
+		setLight<-driver.Light{floor,driver.Up,on}
+	}else{
+		setLight<-driver.Light{floor,driver.Down,on}
+	}
+}
+
 // Called by RunLift and ReadQueueFromFile
-func addCommand(floor uint,setLight chan<- driver.Light){
-	localQueue.AddLocalCommand(floor)
+func addCommand(floor uint){
+	localqueue.AddLocalCommand(floor)
 	setLight <- driver.Light{floor,driver.Command,true}
 }
 
 // Called by RunLift
-func restoreBackup(setLight chan<- driver.Light){
-	for i,val:=range localQueue.ReadQueueFromFile(){
+func restoreBackup(){
+	for i, val := range localqueue.ReadQueueFromFile(){
 		if val{
-			addCommand(uint(i+1),setLight)
+			addCommand(uint(i+1))
 		}
 	}
 }

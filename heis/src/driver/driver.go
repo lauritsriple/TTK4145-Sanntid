@@ -44,8 +44,8 @@ type Light struct {
 
 type LiftStatus struct {
 	Running   bool
-	Floor     uint // why?  	(driver.currentFloor)
-	Direction MotorDirection // better?	(Direction MotorDirection)
+	Floor     uint
+	Direction bool
 	Door      bool
 }
 

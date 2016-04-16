@@ -2,12 +2,12 @@ package control
 
 import (
 	"udp"
-	"localQueue"
+	"localqueue"
 	"log"
 	"time"
 )
 
-const acceptedTimeoutBase=4 //seconds
+const acceptTimeoutBase=4 //seconds
 const newTimeoutBase = 500 //milliseconds
 const N_FLOORS=4
 var globalQueue=make(map[uint]udp.Message)
@@ -19,7 +19,7 @@ func generateKey(floor uint, direction bool) uint{
 	return floor
 }
 
-func addMessage(floor uint, direction bool,toNetwork chan<- udp.Message){
+func addMessage(floor uint, direction bool){
 	key:= generateKey(floor, direction)
 	message:= udp.Message{
 		LiftId:myID,
@@ -37,8 +37,17 @@ func addMessage(floor uint, direction bool,toNetwork chan<- udp.Message){
 }
 
 func delMessage(floor uint, direction bool){
+	key:=generateKey(floor,direction)
+	if val, inQueue:=globalQueue[key];inQueue{
+		val.Status=udp.Done
+		toNetwork <- val
+		delete(globalQueue,key)
+	}
+}
+
+func newMessage(floor uint, direction bool){
 	key:=generateKey(message.Floor,message.Direction)
-	val,inQueue:=globalQueue[ke]
+	val,inQueue:=globalQueue[key]
 	if inQueue{
 		switch message.Status{
 		case udp.Done:
@@ -64,17 +73,17 @@ func delMessage(floor uint, direction bool){
 			//Promptly ignore
 		case udp.Accepted:
 			if val.Status==udp.Reassign && val.ReassId==myID{
-				localQueue.DeleteLocalRequest(message.Floor, message.Direction)
+				localqueue.DeleteLocalRequest(message.Floor, message.Direction)
 			}
 			globalQueue[key]=message
 		case udp.Reassign:
-			fs:=cost(message.Floor,messageDirection)
+			fs:=cost(message.Floor,message.Direction)
 			if fs > message.Weight{
 				message.Weight=fs
 				message.LiftId=myID
 				globalQueue[key]=message
 				toNetwork<-message
-				log.Println("Reassign from lift ", message.reassId," to ",myID)
+				log.Println("Reassign from lift ", message.ReassId," to ",myID)
 			}else{
 				globalQueue[key]=message
 			}
@@ -97,11 +106,11 @@ func delMessage(floor uint, direction bool){
 
 func checkTimeout(){
 	newTimeout:=time.Duration(newTimeoutBase)
-	acceptTimeout:=time.Duration(acceptedTimeoutBase)
+	acceptTimeout:=time.Duration(acceptTimeoutBase)
 	for key,val:=range globalQueue{
 		if val.Status==udp.New || val.Status == udp.Reassign{
 			timediff:= time.Now().Sub(val.TimeRecv)
-			if timediff >((3*newTimeout)*time.Milisecond){
+			if timediff >((3*newTimeout)*time.Millisecond){
 				newOrderTimeout(key,3)
 			} else if timediff >((2*newTimeout)*time.Millisecond){
 				newOrderTimeout(key,2)
@@ -110,16 +119,16 @@ func checkTimeout(){
 			}
 		} else if val.Status == udp.New && val.LiftId != myID{
 			timediff:=time.Now().Sub(val.TimeRecv)
-			if timediff > ((4*acceptedTimeout)*time.Second){
-				acceptedOrderTimeout(key,3)
-			} else if timediff >((3*acceptedTimeout)*time.Second){
-				acceptedOrderTimeout(key,2)
-			} else if timediff >((2*acceptedTimeout)*time.Second){
-				acceptedOrderTimeout(key,1)
+			if timediff > ((4*acceptTimeout)*time.Second){
+				acceptOrderTimeout(key,3)
+			} else if timediff >((3*acceptTimeout)*time.Second){
+				acceptOrderTimeout(key,2)
+			} else if timediff >((2*acceptTimeout)*time.Second){
+				acceptOrderTimeout(key,1)
 			}
-		} else if val.Status == udp.Accepted && val.LiftIf==myID {
+		} else if val.Status == udp.Accepted && val.LiftId==myID {
 			timediff:=time.Now().Sub(val.TimeRecv)
-			if timediff > (acceptedTimeout * time.Second){
+			if timediff > (acceptTimeout * time.Second){
 				val.Weight=cost(val.Floor,val.Direction)
 				val.TimeRecv=time.Now()
 				globalQueue[key]=val
@@ -146,7 +155,7 @@ func newOrderTimeout(key,critical uint){
 	}
 }
 
-func acceptedTimeout(key uint, critical uint){
+func acceptOrderTimeout(key uint, critical uint){
 	switch critical{
 	case 3:
 		log.Println("ERROR! Reassigning orders failed. FALLBACK")
@@ -166,7 +175,7 @@ func takeOrder(key uint){
 		val.LiftId=myID
 		val.Status=udp.Accepted
 		val.TimeRecv=time.Now()
-		localQueue.AddLocalRequest(val.Floor,val.Direction)
+		localqueue.AddLocalRequest(val.Floor,val.Direction)
 		globalQueue[key]=val
 		toNetwork<-globalQueue[key]
 	}
@@ -197,23 +206,23 @@ func cost(reqFloor uint, reqDir bool) int{
 		}
 	} else if reqDir == statusDir{
 		if (statusDir && reqFloor > statusFloor) || (!statusDir && reqFloor < statusFloor){
-			return N_FLOORS + 1 - diff(reqFloor,statusFloor)
+			return N_FLOORS+1-diff(reqFloor,statusFloor)
 		}
 	} else {
 		if (statusDir && reqFloor > statusFloor) || (!statusDir && reqFloor < statusFloor){
-			return N_FLOORS - diff(reqFloor,statusFloor)
+			return N_FLOORS+1-diff(reqFloor,statusFloor)
 		}
 	}
 	return 1
 }
 
-func diff(a uint, b uint) uint{
+func diff(a uint, b uint) int{
 	x:=int(a)
 	y:=int(b)
 	c:=x-y
 	if c < 0{
-		return uint(c*-1)
+		return c*-1
 	} else{
-		return uint(c)
+		return c
 	}
 }
