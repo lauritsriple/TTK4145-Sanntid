@@ -18,50 +18,6 @@ type elevFSM struct{
 
 
 
-
-func (fsmData elevFSM) LoopIO(){
-	FloorChan := make(chan int,1)
-	StopButtonChan := make(chan bool,1)
-	ObstackleChan := make(chan bool,1)
-	go driver.BtnStopPoller(stopButtonPressed)
-	go driver.FloorSensorPoller(floor)
-	go driver.ObstructionPoller(obstacleChan)
-	select{
-	case fsmData.floor <- FloorChan:
-		pass
-	case fsmData.stopIsPressed <- FtopButtonChan:
-		pass
-	case fsmData.obstacle <- ObstacleChan:
-	}
-
-	// orderedFloor := make(chan int)
-	// go messagePasser.getlight(btnLightChan)
-	// select{
-	// case fsmData.destinatedFloor <- orderedFloor:
-	// 	pass
-	// default:
-	// 	pass
-	//}
-
-	// btnLightChan := make(chan int)
-	// go messagePasser.getlight(btnLightChan)
-	// select{
-	// case driver.Driver_setBtnLight(<-btnLightChan):
-	// 	pass
-	// default:
-	// 	pass
-	// }
-
-	//btnChannel := make(chan int)
-	//go driver.Driver_btnPoller(btnChannel)
-	//select{
-	//case messagePasser.sendTCP(<- btnChannel)
-	// 	pass
-	// default:
-	// 	pass
-	// }
-}
-
 func Init(orderedFloorsCh <- chan uint,lightCh <- chan driver.Light, statusCh * chan driver.LiftStatus, buttonCh chan<- driver.Button, quitCh <- chan bool ) bool{
 	if !driver.init(){
 		log.Fatal("could not initialize driver")
