@@ -222,23 +222,23 @@ func ClearLight(light Light){
 
 func ClearAll(){
 	SetMotorDir(MD_stop)
-	light Light
+	var light Light
 	light.On  = false;
 	for f := 0; f< N_FLOORS; f++{
-		light.Floor = f
-		light.Button = UP
-		ClearLight(light Light)
+		light.Floor = uint(f)
+		light.Button = Up
+		ClearLight(light)
 		light.Button = Down
- 		ClearLight(light Light)
+		ClearLight(light)
 		light.Button = Command
-	 	ClearLight(light Light)
+		ClearLight(light)
 	}
 	light.Button = Stop
-	ClearLight(light Light)
+	ClearLight(light)
 	light.Button = Obstruction
-	ClearLight(light Light)
+	ClearLight(light)
 	light.Button = Door
-	ClearLight(light Light)
+	ClearLight(light)
 }
 
 func RunMotor(direction <-chan MotorDirection){
