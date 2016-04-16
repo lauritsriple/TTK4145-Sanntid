@@ -51,7 +51,7 @@ func signaler(cmd *exec.Cmd) {
 			log.Println("Main caught", sig, ". Trying to clean up")
 			log.Println("Main exit in 200 millisecond")
 			close(quit)
-			time.sleep(200 * time.Millisecond)
+			time.Sleep(200 * time.Millisecond)
 			os.Exit(1)
 		}
 	}
@@ -71,7 +71,7 @@ func backup() {
 		select {
 		case <-sigusr:
 			missed_signal = 0
-			time.sleep(200 * time.Millisecond)
+			time.Sleep(200 * time.Millisecond)
 		case <-sigint:
 			log.Println("Backup caught SIGINT, ignore")
 		case <-sigquit:
