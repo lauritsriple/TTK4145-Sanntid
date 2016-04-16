@@ -215,3 +215,12 @@ func SetMotorDir(dir MotorDirection) {
 		Io_WriteAnalog(MOTOR, 2800)
 	}
 }
+
+func ClearAll(){
+	SetMotorDir(MD_stop)
+	// lights off
+}
+
+func RunMotor(direction chan<- MotorDirection){
+	SetMotorDir(<- direction)
+}
