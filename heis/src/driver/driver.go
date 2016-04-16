@@ -28,7 +28,7 @@ const (
 	Command
 	Stop
 	Obstruction
-	door //Not actual button, but used for door light, therefore not exported
+	Door //Not actual button, but used for door light(A bit hacky)
 )
 
 type Button struct {
@@ -108,7 +108,7 @@ var lightKeyType = []int{
 	Up:      3,
 	Down:    7,
 	Stop:    12,
-	door:    13}
+	Door:    13}
 
 var (
 	currentFloor      = -1
@@ -131,7 +131,7 @@ func Init() bool {
 	return false
 }
 
-func setLight(lightch chan Light) {
+func SetLight(lightch chan Light) {
 	select {
 	default:
 		return

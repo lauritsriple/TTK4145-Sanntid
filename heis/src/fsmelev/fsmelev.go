@@ -4,7 +4,6 @@ import (
 	"driver"
 	"log"
 	"fmt"
-	"io"
 	"time"
 )
 
@@ -32,7 +31,7 @@ func driverLoop(lightCh <-chan driver.Light, buttonCh <-chan driver.Button, floo
 			return
 		default:
 			driver.ReadButtons(buttonCh)
-			driver.ReadFloorSensor(floorSensorCh)
+			driver.ReadFloorSensors(floorSensorCh)
 			driver.RunMotor(motorDirectionCh)
 			driver.SetLight(lightCh)
 			time.Sleep(5 * time.Millisecond)
@@ -69,7 +68,7 @@ func executeOrder(orderedFloorCh <-chan uint, lightCh chan<- driver.Light, statu
 		case stopFloor = <-orderedFloorCh: // fix orderes outside range?
 			// got new order
 		case <-doorTimerCh:
-			lightCh<-driver.Ligth{0,driver.door, false}
+			lightCh<-driver.Light{0,driver.door, false}
 			status.Door = false
 			statusCh <-status
 		case currentFloor = <-floorSensorCh:
