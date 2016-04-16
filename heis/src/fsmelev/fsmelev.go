@@ -18,14 +18,8 @@ type elevFSM struct{
 }
 
 
-<<<<<<< HEAD
 func Init(orderedFloorsCh <-chan uint,lightCh <-chan driver.Light, statusCh * chan driver.LiftStatus, buttonCh chan<- driver.Button, quitCh <-chan bool ) bool{
 	if !driver.Init(){
-=======
-
-func Init(orderedFloorsCh <- chan uint,lightCh <- chan driver.Light, statusCh * chan driver.LiftStatus, buttonCh chan<- driver.Button, quitCh <- chan bool ) bool{
-	if !driver.init(){
->>>>>>> be42de94e93a8c402056d8a3dc5f27871d5c3ee5
 		log.Fatal("could not initialize driver")
 		return false
 	}
