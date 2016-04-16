@@ -3,9 +3,10 @@ package control
 import (
 	"udp"
 	"driver"
-	"localQueue"
 	"log"
 	"time"
+	"localQueue"
+	"fsmelev"
 )
 
 var(
@@ -14,20 +15,20 @@ var(
 	lastOrder=uint(0)
 	floorOrder=make(chan uint,5)
 	setLight=make(chan driver.Light,5)
-	liftStatus=driver.Status
+	liftStatus=driver.LiftStatus
 	maxFloor=driver.N_FLOORS
 	button driver.Button
 	message udp.Message
-	quit:=make(chan bool)
+	quit=make(chan bool)
 )
 
 func RunLift(quit *chan bool){
-	buttonPress:=make(chan driver.Button,5)
-	status:=make(chan driver.Status,5)
-	toNetwork=make(chan udp.Message,10)
-	fromNetwork=make(chan udp.Message,10)
+	var buttonPress=make(chan driver.Button,5)
+	var status=make(chan driver.LiftStatus,5)
+	var toNetwork=make(chan udp.Message,10)
+	var fromNetwork=make(chan udp.Message,10)
 	myID=udp.NetInit(&toNetwork,&fromNetwork,&quit)
-	fsm.Init(&floorOrder,&setLight,&status,&buttonPress,&quit)
+	fsmelev.Init(&floorOrder,&setLight,&status,&buttonPress,&quit)
 	restoreBackup(setLight)
 	liftStatus <- status
 	ticker1:=time.NewTicker(10*time.Millisecond).C
@@ -53,13 +54,13 @@ func RunLift(quit *chan bool){
 }
 
 func newKeyPress(button driver.Button){
-	switch driver.Button{
+	switch button.Button{
 	case driver.Up:
 		log.Println("Request up button pressed:",button.Floor)
 		addMessage(button.Floor,true)
 		setOrderLight(button.Floor,true,true)
 	case driver.Down:
-		log.Println("Request down button pressed: ",button.Floor
+		log.Println("Request down button pressed: ",button.Floor)
 		addMessage(button.Floor,false)
 		setOrderLight(button.Floor,false,true)
 	case driver.Command:
@@ -75,13 +76,12 @@ func newKeyPress(button driver.Button){
 }
 
 // Called by RunLift
-func runQueue(liftStatus driver.Status, floorOrder chan<- uint){
+func runQueue(liftStatus driver.LiftStatus, floorOrder chan<- uint){
 	floor:=liftStatus.Floor
 	if liftStatus.Running{
 		if liftStatus.Direction{
 			floor++
-		}
-		else{
+		}else{
 			floor--
 		}
 	}
@@ -93,7 +93,7 @@ func runQueue(liftStatus driver.Status, floorOrder chan<- uint){
 		removeFromQueue(order,direction)
 		lastOrder=0
 		liftStatus.Door=true
-		time.sleep(20*time.Millisecond)
+		time.Sleep(20*time.Millisecond)
 	} else if order==0 && !liftStatus.Door{ // No order and door closed, idle elevator
 		isIdle=true
 	} else if order != 0{ // We have an order

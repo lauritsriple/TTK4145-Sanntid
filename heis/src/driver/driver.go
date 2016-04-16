@@ -221,6 +221,11 @@ func ClearAll(){
 	// lights off
 }
 
-func RunMotor(direction chan<- MotorDirection){
-	SetMotorDir(<- direction)
+func RunMotor(direction <-chan MotorDirection){
+	select {
+	default:
+		return
+	case dir := <-direction:
+		SetMotorDir(dir)
+	}
 }

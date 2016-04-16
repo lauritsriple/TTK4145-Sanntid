@@ -3,7 +3,6 @@ package fsmelev
 import (
 	"driver"
 	"log"
-	"fmt"
 	"time"
 )
 
