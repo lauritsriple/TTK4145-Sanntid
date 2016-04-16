@@ -131,7 +131,7 @@ func Init() bool {
 	return false
 }
 
-func SetLight(lightch chan Light) {
+func SetLight(lightch <-chan Light) {
 	select {
 	default:
 		return
