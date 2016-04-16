@@ -9,7 +9,7 @@ import (
 
 const acceptedTimeoutBase=4 //seconds
 const newTimeoutBase = 500 //milliseconds
-
+const N_FLOORS=4
 var globalQueue=make(map[uint]udp.Message)
 
 func generateKey(floor uint, direction bool) uint{
