@@ -2,5 +2,5 @@
 
 for i in "$@"
 do
-ssh $i < localDeploy.sh
+ssh "student@129.241.187.$i" < localDeploy.sh
 done
