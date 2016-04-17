@@ -2,5 +2,5 @@
 
 for i in "$@"
 do
-ssh $i < localDeploy.sh
+ssh $i < localRunElev.sh
 done

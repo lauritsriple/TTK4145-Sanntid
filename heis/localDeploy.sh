@@ -9,6 +9,8 @@ else
 	cd "$directory"; git pull
 fi
 
-cd $directory
-
-
+go build $directory+"src/driver"
+go build $directory+"src/localqueue"
+go build $directory+"src/udp"
+go build $directory+"src/control"
+go bulid $directory+"src"
