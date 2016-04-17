@@ -7,8 +7,9 @@ import (
 	"time"
 )
 
-const acceptTimeoutBase=4 //seconds
+const acceptTimeoutBase=1 //seconds
 const newTimeoutBase = 500 //milliseconds
+const motorStopTimeoutBase=5
 const N_FLOORS=4
 var globalQueue=make(map[uint]udp.Message)
 
@@ -107,6 +108,7 @@ func newMessage(floor uint, direction bool){
 func checkTimeout(){
 	newTimeout:=time.Duration(newTimeoutBase)
 	acceptTimeout:=time.Duration(acceptTimeoutBase)
+	motorStopTimeout:=time.Duration(motorStopTimeoutBase)
 	for key,val:=range globalQueue{
 		if val.Status==udp.New || val.Status == udp.Reassign{
 			timediff:= time.Now().Sub(val.TimeRecv)
@@ -132,6 +134,12 @@ func checkTimeout(){
 				val.Weight=cost(val.Floor,val.Direction)
 				val.TimeRecv=time.Now()
 				globalQueue[key]=val
+				toNetwork<-globalQueue[key]
+			} else if timediff > (motorStopTimeout*time.Second){
+				log.Println("Motorstop")
+				val.TimeRecv=time.now()
+				val.Status=udp.Reassign
+				val.Weight=1
 				toNetwork<-globalQueue[key]
 			}
 		}
