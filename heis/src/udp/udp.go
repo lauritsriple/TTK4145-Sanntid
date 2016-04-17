@@ -79,13 +79,10 @@ func findID(a string) int {
 //Sets up the broadcast
 //Called by NetInit
 func BroadcastInit(send <-chan Message, recv chan<- Message, iface *net.Interface, quit <-chan bool) {
-	fmt.Println("yolo1")
 	group, err := net.ResolveUDPAddr("udp", braddr)
 	checkError(err)
-	fmt.Println("yolo2")
 	conn, err := net.ListenMulticastUDP("udp", iface, group)
 	checkError(err)
-	fmt.Println("yolo3")
 	defer conn.Close()
 	go broadcastListen(recv, conn)
 	go broadcastSend(send, conn, group, quit)
