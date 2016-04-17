@@ -135,6 +135,8 @@ func checkTimeout(){
 				val.TimeRecv=time.Now()
 				val.Status=udp.Reassign
 				val.Weight=1
+				val.ReassId=myID
+				globalQueue[key]=val
 				toNetwork<-globalQueue[key]
 			} else if timediff > (acceptTimeout * time.Second){
 				val.Weight=cost(val.Floor,val.Direction)
