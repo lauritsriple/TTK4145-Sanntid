@@ -2,15 +2,9 @@ package driver
 
 import (
 	"log"
-	"time"
 )
 
 const N_FLOORS = 4
-const N_LIGHTS = 4
-const N_BUTTONS = 3
-
-//Milliseconds between each polling round
-const POLLRATE = 20 * time.Millisecond
 
 type MotorDirection int
 
@@ -20,7 +14,7 @@ const (
 	MD_stop
 )
 
-type ButtonType int //Enum for buttons
+type ButtonType int
 
 const (
 	Up ButtonType = iota
@@ -28,7 +22,7 @@ const (
 	Command
 	Stop
 	Obstruction
-	Door //Not actual button, but used for door light(A bit hacky)
+	Door //Not actual button, but used for door light
 )
 
 type Button struct {
@@ -117,6 +111,7 @@ var (
 	atFloor = false
 )
 
+//Called by fsmelev.Init
 func Init() bool {
 	if driverInitialized {
 		log.Fatal("ERROR, driver already initialized")
@@ -132,6 +127,7 @@ func Init() bool {
 	return false
 }
 
+//Called by fsmelev.driverLoop
 func SetLight(lightch <-chan Light) {
 	select {
 	default:
@@ -145,6 +141,7 @@ func SetLight(lightch <-chan Light) {
 	}
 }
 
+//Called by ReadFloorSensors
 func setFloorIndicator(floor int) {
 	if (floor < 1) || (floor > N_FLOORS) {
 		log.Fatal("Floororder out of range: ", floor)
@@ -166,6 +163,7 @@ func setFloorIndicator(floor int) {
 	}
 }
 
+//Called by fsmelev.driverLoop
 func ReadButtons(keypress chan<- Button) {
 	for index, key := range buttons {
 		if readButton(index, key) {
@@ -174,6 +172,7 @@ func ReadButtons(keypress chan<- Button) {
 	}
 }
 
+//Called by ReadButtons
 func readButton(index int, key int) bool {
 	if Io_ReadBit(key) {
 		if !lastPress[index] {
@@ -186,6 +185,7 @@ func readButton(index int, key int) bool {
 	return false
 }
 
+//Called by fsmelev.driverLoop
 func ReadFloorSensors(floorSeen chan<- uint) {
 	for f := 0; f < N_FLOORS; f++ {
 		if Io_ReadBit(floorSensorChannels[f]){
@@ -206,7 +206,8 @@ func ReadFloorSensors(floorSeen chan<- uint) {
 	}
 }
 
-func SetMotorDir(dir MotorDirection) {
+//Called by RunMotor
+func setMotorDir(dir MotorDirection) {
 	switch dir {
 	case MD_stop:
 		Io_WriteAnalog(MOTOR, 0)
@@ -219,35 +220,39 @@ func SetMotorDir(dir MotorDirection) {
 	}
 }
 
-func ClearLight(light Light){
-	Io_ClearBit(lightmap[lightKeyType[int(light.Button)]+int(light.Floor)])
-}
-
-func ClearAll(){
-	SetMotorDir(MD_stop)
-	light:=Light{0,Stop,false}
-	light.On  = false;
-	for f := 0; f< N_FLOORS; f++{
-		light.Floor = uint(f+1)
-		light.Button = Up
-		ClearLight(light)
-		light.Button = Down
-		ClearLight(light)
-		light.Button = Command
-		ClearLight(light)
-	}
-	light.Floor=0
-	light.Button = Stop
-	ClearLight(light)
-	light.Button = Door
-	ClearLight(light)
-}
-
+//Called by fsmelev.driverLoop
 func RunMotor(direction <-chan MotorDirection){
 	select {
 	default:
 		return
 	case dir := <-direction:
-		SetMotorDir(dir)
+		setMotorDir(dir)
 	}
+}
+
+//Called by ClearAll
+func clearLight(light Light){
+	Io_ClearBit(lightmap[lightKeyType[int(light.Button)]+int(light.Floor)])
+}
+
+//Called by fsmelev.Init and fsmelev.driverLoop
+//Clears all lights, and stop motor
+func ClearAll(){
+	setMotorDir(MD_stop)
+	light:=Light{0,Stop,false}
+	light.On  = false;
+	for f := 0; f< N_FLOORS; f++{
+		light.Floor = uint(f+1)
+		light.Button = Up
+		clearLight(light)
+		light.Button = Down
+		clearLight(light)
+		light.Button = Command
+		clearLight(light)
+	}
+	light.Floor=0
+	light.Button = Stop
+	clearLight(light)
+	light.Button = Door
+	clearLight(light)
 }

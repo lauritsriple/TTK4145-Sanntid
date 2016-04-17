@@ -11,14 +11,7 @@ import (
 	"time"
 )
 
-//How to make libary
-//Put libary in src/udp
-//go build udp
-//go install udp
-
-const PORT string = "20012"
-const BROADCASTADDR string = "192.168.43.255"
-const braddr string = "239.0.0.49:2000"
+const maddr string = "239.0.0.49:2000"
 
 type Orderstatus int
 
@@ -39,7 +32,6 @@ type Message struct {
 	TimeRecv  time.Time
 }
 
-//Checks the error message and kills the program
 func checkError(err error) {
 	if err != nil {
 		fmt.Println("Error: ", err)
@@ -76,22 +68,22 @@ func findID(a string) int {
 	return id
 }
 
-//Sets up the broadcast
 //Called by NetInit
-func BroadcastInit(send <-chan Message, recv chan<- Message, iface *net.Interface, quitCh <-chan bool) {
-	group, err := net.ResolveUDPAddr("udp", braddr)
+//Sets up the network using multicast
+func multicastInit(send <-chan Message, recv chan<- Message, iface *net.Interface, quitCh <-chan bool) {
+	group, err := net.ResolveUDPAddr("udp", maddr)
 	checkError(err)
 	conn, err := net.ListenMulticastUDP("udp", iface, group)
 	checkError(err)
 	defer conn.Close()
-	go broadcastListen(recv, conn)
-	go broadcastSend(send, conn, group, quitCh)
+	go multicastListen(recv, conn)
+	go multicastSend(send, conn, group, quitCh)
 	fmt.Println("Network running")
-	<-quitCh //w8 for channel to be true. Defer will be called
+	<-quitCh //w8 for channel to be true. Defer will be called to close the connection
 }
-
-//Workerthread. Called by BroadcastInit
-func broadcastSend(send <-chan Message, conn *net.UDPConn, addr *net.UDPAddr, quitCh <-chan bool) {
+//Called by MulticastInit
+//Channel can be used to send messages to the network
+func multicastSend(send <-chan Message, conn *net.UDPConn, addr *net.UDPAddr, quitCh <-chan bool) {
 	for {
 		select {
 		case m := <-send:
@@ -110,8 +102,9 @@ func broadcastSend(send <-chan Message, conn *net.UDPConn, addr *net.UDPAddr, qu
 	}
 }
 
-//Workerthread. Called by BroadcastInit
-func broadcastListen(recv chan<- Message, conn *net.UDPConn) {
+//Called by MulticastInit
+//All received messsages piped to buffered channel
+func multicastListen(recv chan<- Message, conn *net.UDPConn) {
 	for {
 		buf := make([]byte, 512)
 		l, _, err := conn.ReadFrom(buf)
@@ -129,7 +122,7 @@ func broadcastListen(recv chan<- Message, conn *net.UDPConn) {
 	}
 }
 
-//Called by
+//Called by RunLift
 //Sets up the network and returns the id of the elevator
 func NetInit(send <-chan Message, recv chan<- Message, quitch <-chan bool) int {
 	addr, iface, err := findIP()
@@ -137,6 +130,6 @@ func NetInit(send <-chan Message, recv chan<- Message, quitch <-chan bool) int {
 		fmt.Println("Error findig the interface", err)
 		return 0
 	}
-	go BroadcastInit(send, recv, iface, quitch)
+	go multicastInit(send, recv, iface, quitch)
 	return findID(addr)
 }

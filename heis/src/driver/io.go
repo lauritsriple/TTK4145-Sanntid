@@ -8,14 +8,12 @@ package driver
 import "C"
 import "log"
 
-//Private functions
 func checkError(err error){
 	if err != nil {
 		log.Fatal("Error interfacing the c-driver ",err)
 	}
 }
 
-//Public functions
 func Io_Init() bool {
 	n, err := C.io_init()
 	checkError(err)
@@ -50,6 +48,7 @@ func Io_ReadAnalog(channel int) int{
 	return int(n)
 }
 
+//int to bool
 func citob(i C.int) bool{
 	if i==0{
 		return false

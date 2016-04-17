@@ -13,6 +13,8 @@ const N_FLOORS=4
 var globalQueue=make(map[uint]udp.Message)
 var motorStop bool
 
+//Called multiple places in this file only
+//Generates key for the globalQueue based on floor and direction
 func generateKey(floor uint, direction bool) uint{
 	if direction{
 		floor+=10
@@ -20,6 +22,8 @@ func generateKey(floor uint, direction bool) uint{
 	return floor
 }
 
+//Called by control.newKeyPress
+//Adds new order to globalQueue and network
 func addMessage(floor uint, direction bool){
 	key:= generateKey(floor, direction)
 	message:= udp.Message{
@@ -37,6 +41,8 @@ func addMessage(floor uint, direction bool){
 	toNetwork<-message
 }
 
+//Call by control.removeFromQueue
+//Marks order as done,sends to network and deletes from globalQueue
 func delMessage(floor uint, direction bool){
 	key:=generateKey(floor,direction)
 	if val, inQueue:=globalQueue[key];inQueue{
@@ -46,7 +52,9 @@ func delMessage(floor uint, direction bool){
 	}
 }
 
-func newMessage(floor uint, direction bool){
+//Called by control.Runlift
+//Handles incomming messages from network
+func newMessage(message udp.Message){
 	key:=generateKey(message.Floor,message.Direction)
 	val,inQueue:=globalQueue[key]
 	if inQueue{
@@ -104,7 +112,8 @@ func newMessage(floor uint, direction bool){
 	}
 }
 
-
+//Called by control.RunLift
+//Checks timeout on all orders in globalQueue, also check for motorstop
 func checkTimeout(){
 	newTimeout:=time.Duration(newTimeoutBase)
 	acceptTimeout:=time.Duration(acceptTimeoutBase)
@@ -152,6 +161,7 @@ func checkTimeout(){
 	}
 }
 
+//Called by checkTimeout
 func newOrderTimeout(key,critical uint){
 	switch critical{
 	case 3:
@@ -169,6 +179,7 @@ func newOrderTimeout(key,critical uint){
 	}
 }
 
+//Called by checkTimeout
 func acceptOrderTimeout(key uint, critical uint){
 	switch critical{
 	case 3:
@@ -181,6 +192,8 @@ func acceptOrderTimeout(key uint, critical uint){
 	}
 }
 
+//Called by newOrderTimeout,acceptOrderTimeout and 
+//Accepts order and notifies network
 func takeOrder(key uint){
 	log.Println("Taking order: ",globalQueue[key])
 	if val,inQueue:=globalQueue[key];!inQueue{
@@ -196,6 +209,8 @@ func takeOrder(key uint){
 	}
 }
 
+//Called by acceptOrderTimeout
+//Tries to reassign order
 func reassignOrder(key uint){
 	log.Println("Reassign order called on order: ",globalQueue[key])
 	if val,inQueue:=globalQueue[key];!inQueue{
@@ -211,6 +226,8 @@ func reassignOrder(key uint){
 	}
 }
 
+//Called by multiple functions in this file
+//Evaluates the cost for this elevator to execute order, higher is better
 func cost(reqFloor uint, reqDir bool) int{
 	statusFloor:=liftStatus.Floor
 	statusDir:=liftStatus.Direction
@@ -232,6 +249,7 @@ func cost(reqFloor uint, reqDir bool) int{
 	return 1
 }
 
+//Called by cost
 func diff(a uint, b uint) int{
 	x:=int(a)
 	y:=int(b)

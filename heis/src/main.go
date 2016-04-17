@@ -17,7 +17,7 @@ var quitCh = make(chan bool)
 func main() {
 	flag.Parse()
 	if *backupflag {
-		backup()
+		backup() //Blockingcall for the backup
 	}
 	log.Println("Starting elevator. Send SIGQUIT to shutown (CTRL+\\)")
 	cmd := spawnBackup()
@@ -26,6 +26,7 @@ func main() {
 	log.Println("Lift Shutdown")
 }
 
+//Called by main
 func spawnBackup() *exec.Cmd {
 	cmd := exec.Command(os.Args[0], "-backup")
 	cmd.Stderr = os.Stderr
@@ -37,6 +38,8 @@ func spawnBackup() *exec.Cmd {
 	return cmd
 }
 
+//Call by main
+//Signals the backup every 200 millisecond
 func signaler(cmd *exec.Cmd) {
 	ticker := time.NewTicker(200 * time.Millisecond).C
 	sigint := make(chan os.Signal, 1)
@@ -58,6 +61,8 @@ func signaler(cmd *exec.Cmd) {
 	}
 }
 
+//Called by main
+//If main dies, we get missed signals -> kill the parent and return
 func backup() {
 	missed_signal := 0
 	sigint := make(chan os.Signal, 1)
@@ -89,6 +94,8 @@ func backup() {
 	}
 }
 
+//Called by backup
+//Kills the parent of the backup
 func killParent(ppid int) {
 	if ppid != os.Getppid() {
 		log.Println("Main dead. Backup now belongs to pid:", os.Getppid())

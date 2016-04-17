@@ -10,6 +10,8 @@ const motorStopTimeoutBase=12 //seconds
 var timeGoToFloor= time.Now()
 var motorStopTimerRunning=false
 
+//Called by control.RunLift
+//Initializes the driver, runs polling from driver to channels and executes orders from channel
 func Init(orderedFloorCh <-chan uint,lightCh chan driver.Light, statusCh chan driver.LiftStatus, buttonCh chan<- driver.Button,motorStopCh chan<- bool ,quitCh <-chan bool ) bool{
 	if !driver.Init(){
 		log.Fatal("could not initialize driver")
@@ -27,6 +29,8 @@ func Init(orderedFloorCh <-chan uint,lightCh chan driver.Light, statusCh chan dr
 	return true
 }
 
+//Called by Init
+//Polls and sets the GPIO
 func driverLoop(lightCh <-chan driver.Light, buttonCh chan<- driver.Button, floorSensorCh chan<- uint, motorDirectionCh <-chan driver.MotorDirection ,quitCh <-chan bool){
 	for{
 		select{
@@ -43,6 +47,7 @@ func driverLoop(lightCh <-chan driver.Light, buttonCh chan<- driver.Button, floo
 	}
 }
 
+//Called by Init
 func executeOrder(orderedFloorCh <-chan uint, lightCh chan<- driver.Light, statusCh chan<- driver.LiftStatus, floorSensorCh <-chan uint, doorTimerCh chan bool, motorDirectionCh chan<- driver.MotorDirection,motorStopCh chan<- bool ,quitCh <-chan bool){
 	var (
 		currentFloor uint
@@ -70,8 +75,8 @@ func executeOrder(orderedFloorCh <-chan uint, lightCh chan<- driver.Light, statu
 		select{
 		case <-quitCh:
 			return
-		case stopFloor = <-orderedFloorCh: // fix orderes outside range?
-			// got new order
+		case stopFloor = <-orderedFloorCh:
+			//Got new stopFloor
 		case <-doorTimerCh:
 			lightCh<-driver.Light{0,driver.Door, false}
 			status.Door = false
@@ -82,12 +87,14 @@ func executeOrder(orderedFloorCh <-chan uint, lightCh chan<- driver.Light, statu
 			time.Sleep(5*time.Millisecond)
 			if stopFloor != 0{
 				stopAtFloor(currentFloor, &status, &stopFloor, motorDirectionCh,lightCh,statusCh,doorTimerCh,motorStopCh)
-				goToFloor(currentFloor, &status, &stopFloor,motorDirectionCh,statusCh)// goes to floor if not door is open
+				goToFloor(currentFloor, &status, &stopFloor,motorDirectionCh,statusCh)
 			}
 		}
 	}
 }
 
+//Called by executeOrder
+//Stops at ordered floor, sets lights,motor and door. Also detects motorstop
 func stopAtFloor(currentFloor uint, status *driver.LiftStatus, stopFloor *uint, motorDirectionCh chan<- driver.MotorDirection, lightCh chan<- driver.Light,statusCh chan<- driver.LiftStatus,doorTimerCh chan<- bool,motorStopCh chan<- bool){
 	if status.Floor == *stopFloor{
 		motorDirectionCh <-driver.MD_stop
@@ -108,7 +115,8 @@ func stopAtFloor(currentFloor uint, status *driver.LiftStatus, stopFloor *uint, 
 	}
 }
 
-
+//Called by executeOrder
+//Start the elevator ordered direction. Also starts the motorstop timer
 func goToFloor(currentFloor uint, status *driver.LiftStatus, stopFloor *uint, motorDirectionCh chan<- driver.MotorDirection,statusCh chan<- driver.LiftStatus){
 	if !status.Door && !status.Running{
 		if currentFloor < *stopFloor{
@@ -125,6 +133,7 @@ func goToFloor(currentFloor uint, status *driver.LiftStatus, stopFloor *uint, mo
 	}
 }
 
+//Called by executeOrder
 func updateStatus(currentFloor uint, status *driver.LiftStatus, motorDirectionCh chan<- driver.MotorDirection,statusCh chan<- driver.LiftStatus){
 	switch currentFloor{
 		case 0:

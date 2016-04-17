@@ -17,6 +17,8 @@ type OrderQueue struct {
 var backupFile = "backupQueue.txt"
 var localQueue = OrderQueue{}
 
+//Called by DeleteLocalOrder and AddLocalCommand 
+//Writes the local commands (buttons inside elevator) to backupfile
 func writeQueueToFile() {
 	commandQueue, err := json.Marshal(localQueue.Command)
 	if err != nil {
@@ -28,6 +30,8 @@ func writeQueueToFile() {
 	}
 }
 
+//Called by control.restoreBackup()
+//Restores local commands (buttons inside elevator) in returnvalue
 func ReadQueueFromFile() []bool {
 	byt, err := ioutil.ReadFile(backupFile)
 	if err != nil {
@@ -41,11 +45,13 @@ func ReadQueueFromFile() []bool {
 	return cmd
 }
 
+//Called by control.addCommand 
 func AddLocalCommand(floor uint) {
 	localQueue.Command[floor-1] = true
 	writeQueueToFile()
 }
 
+//Called by messageparser.takeOrder
 func AddLocalRequest(floor uint, Direction bool) {
 	if Direction {
 		localQueue.Up[floor-1] = true
@@ -54,6 +60,7 @@ func AddLocalRequest(floor uint, Direction bool) {
 	}
 }
 
+//Called by messageparser.newMessage
 func DeleteLocalRequest(floor uint, Direction bool) {
 	if Direction {
 		localQueue.Up[floor-1] = false
@@ -61,7 +68,7 @@ func DeleteLocalRequest(floor uint, Direction bool) {
 		localQueue.Down[floor-1] = false
 	}
 }
-
+//Called by control.removeFromQueue
 func DeleteLocalOrder(floor uint, Direction bool) {
 	localQueue.Command[floor-1] = false
 	writeQueueToFile()
@@ -72,6 +79,8 @@ func DeleteLocalOrder(floor uint, Direction bool) {
 	}
 }
 
+//Called by control.runQueue
+//returns orderFloor and direction from currentFloor
 func GetOrder(currentFloor uint, direction bool) (uint, bool) {
 	if direction {
 		if nextStop := checkUp(currentFloor, N_FLOORS); nextStop > 0 {
@@ -92,6 +101,8 @@ func GetOrder(currentFloor uint, direction bool) (uint, bool) {
 	}
 }
 
+//Called by GetOrder
+//Check if upwards orders between start and stop
 func checkUp(start uint, stop uint) uint {
 	for i := int(start) - 1; i <= int(stop)-1; i++ {
 		if i > N_FLOORS-1 || i < 0 {
@@ -104,6 +115,8 @@ func checkUp(start uint, stop uint) uint {
 	return 0
 }
 
+//Called by GetOrder
+//Check if downwards orders between start and stop
 func checkDown(start uint, stop uint) uint {
 	for i := int(start) - 1; i >= int(stop)-1; i-- {
 		if i > N_FLOORS-1 || i < 0 {

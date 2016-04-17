@@ -18,12 +18,13 @@ var(
 	liftStatus driver.LiftStatus
 	button driver.Button
 	message udp.Message
-	//#quitCh=make(chan bool,2)
 	toNetwork=make(chan udp.Message,10)
 	fromNetwork=make(chan udp.Message,10)
 	motorStopCh=make(chan bool,3)
 )
 
+//Called by main
+//Initializes all the other modules and goes to eternal for loop
 func RunLift(quitCh chan bool){
 	var buttonPress=make(chan driver.Button,5)
 	var status=make(chan driver.LiftStatus,5)
@@ -41,7 +42,7 @@ func RunLift(quitCh chan bool){
 		case liftStatus=<-status:
 			runQueue(liftStatus,floorOrder)
 		case message=<-fromNetwork:
-			newMessage(message.Floor,message.Direction)
+			newMessage(message)
 			orderLight(message)
 		case <-ticker1:
 			checkTimeout()
@@ -53,6 +54,7 @@ func RunLift(quitCh chan bool){
 	}
 }
 
+//Called by RunLift
 func newKeyPress(button driver.Button){
 	switch button.Button{
 	case driver.Up:
@@ -75,7 +77,7 @@ func newKeyPress(button driver.Button){
 	}
 }
 
-// Called by RunLift
+//Called by RunLift
 func runQueue(liftStatus driver.LiftStatus, floorOrder chan<- uint){
 	floor:=liftStatus.Floor
 	if liftStatus.Running{
@@ -86,27 +88,24 @@ func runQueue(liftStatus driver.LiftStatus, floorOrder chan<- uint){
 		}
 	}
 
-	// Get order from localqueue
 	order,direction:=localqueue.GetOrder(floor,liftStatus.Direction)
-	// Reported status is the ordered floor and door open
 	if liftStatus.Floor == order && liftStatus.Door{
 		removeFromQueue(order,direction)
 		lastOrder=0
 		liftStatus.Door=true
 		time.Sleep(20*time.Millisecond)
-	} else if order==0 && !liftStatus.Door{ // No order and door closed, idle elevator
+	} else if order==0 && !liftStatus.Door{
 		isIdle=true
-	} else if order != 0{ // We have an order
+	} else if order != 0{
 		isIdle=false
 		if lastOrder!= order && !liftStatus.Door{
-			// Check that the new order is not the same as last order, and door closed
 			lastOrder=order
 			floorOrder <- order
 		}
 	}
 }
 
-// Called by runQueue
+//Called by runQueue
 func removeFromQueue(floor uint, direction bool){
 	localqueue.DeleteLocalOrder(floor,direction)
 	delMessage(floor,direction)
@@ -114,7 +113,7 @@ func removeFromQueue(floor uint, direction bool){
 	setOrderLight(floor,direction,false)
 }
 
-// Called by RunLift
+//Called by RunLift
 func orderLight(message udp.Message){
 	switch message.Status{
 	case udp.Done:
@@ -125,7 +124,7 @@ func orderLight(message udp.Message){
 		setOrderLight(message.Floor,message.Direction,true)
 	}
 }
-
+//Called by orderLight
 func setOrderLight(floor uint, direction bool, on bool){
 	if direction{
 		setLight<-driver.Light{floor,driver.Up,on}
@@ -134,13 +133,13 @@ func setOrderLight(floor uint, direction bool, on bool){
 	}
 }
 
-// Called by RunLift and ReadQueueFromFile
+//Called by RunLift and restoreBackup
 func addCommand(floor uint){
 	localqueue.AddLocalCommand(floor)
 	setLight <- driver.Light{floor,driver.Command,true}
 }
 
-// Called by RunLift
+//Called by RunLift
 func restoreBackup(){
 	for i, val := range localqueue.ReadQueueFromFile(){
 		if val{
