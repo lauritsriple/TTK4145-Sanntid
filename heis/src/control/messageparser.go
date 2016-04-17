@@ -114,7 +114,7 @@ func checkTimeout(){
 	default:
 	}
 	for key,val:=range globalQueue{
-		if val.Status==udp.New || val.Status == udp.Reassign{
+		if (val.Status==udp.New || val.Status == udp.Reassign) && !motorStop{
 			timediff:= time.Now().Sub(val.TimeRecv)
 			if timediff >((3*newTimeout)*time.Millisecond){
 				newOrderTimeout(key,3)
@@ -123,7 +123,7 @@ func checkTimeout(){
 			} else if timediff >((1* newTimeout)*time.Millisecond){
 				newOrderTimeout(key,1)
 			}
-		} else if val.Status == udp.Accepted && val.LiftId != myID{
+		} else if val.Status == udp.Accepted && val.LiftId != myID && !motorStop{
 			timediff:=time.Now().Sub(val.TimeRecv)
 			if timediff > ((4*acceptTimeout)*time.Second){
 				acceptOrderTimeout(key,3)
@@ -136,7 +136,7 @@ func checkTimeout(){
 			timediff:=time.Now().Sub(val.TimeRecv)
 			if motorStop {
 				val.Status=udp.New
-				val.Weight=1
+				val.Weight=0
 				val.TimeRecv=time.Now()
 				val.ReassId=0
 				val.LiftId=0
