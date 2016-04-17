@@ -130,18 +130,18 @@ func checkTimeout(){
 			}
 		} else if val.Status == udp.Accepted && val.LiftId==myID {
 			timediff:=time.Now().Sub(val.TimeRecv)
-			if timediff > (acceptTimeout * time.Second){
-				val.Weight=cost(val.Floor,val.Direction)
-				val.TimeRecv=time.Now()
-				globalQueue[key]=val
-				toNetwork<-globalQueue[key]
-			} else if timediff > (motorStopTimeout*time.Second){
+			if timediff > (motorStopTimeout*time.Second){
 				log.Println("Motorstop")
 				val.TimeRecv=time.Now()
 				val.Status=udp.Reassign
 				val.Weight=1
 				toNetwork<-globalQueue[key]
-			}
+			}else if timediff > (acceptTimeout * time.Second){
+				val.Weight=cost(val.Floor,val.Direction)
+				val.TimeRecv=time.Now()
+				globalQueue[key]=val
+				toNetwork<-globalQueue[key]
+
 		}
 	}
 }
