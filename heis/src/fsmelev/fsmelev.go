@@ -19,6 +19,7 @@ func Init(orderedFloorCh <-chan uint,lightCh chan driver.Light, statusCh chan dr
 	var motorDirectionCh = make(chan driver.MotorDirection, 5)
 	go driverLoop(lightCh, buttonCh, floorSensorCh, motorDirectionCh,quitCh)
 	go executeOrder(orderedFloorCh, lightCh, statusCh, floorSensorCh, doorTimerCh, motorDirectionCh, quitCh)
+	log.Println("fsmElev initialized")
 	return true
 }
 
@@ -44,7 +45,7 @@ func executeOrder(orderedFloorCh <-chan uint, lightCh chan<- driver.Light, statu
 		stopFloor uint
 		status driver.LiftStatus
 		)
-	status.Direction = false
+	status.Direction = true
 
 	// not in state, go up until floor
 	motorDirectionCh <-driver.MD_up
@@ -56,7 +57,8 @@ func executeOrder(orderedFloorCh <-chan uint, lightCh chan<- driver.Light, statu
 		}
 	}
 	motorDirectionCh <-driver.MD_stop
-	status.Floor = currentFloor
+	status.Floor=currentFloor
+	log.Println(currentFloor)
 	status.Running = false
 	status.Door = false
 	statusCh <-status
@@ -116,11 +118,12 @@ func updateStatus(currentFloor uint, status *driver.LiftStatus, motorDirectionCh
 	switch currentFloor{
 		case 0:
 			if status.Door{
-				log.Fatal("lift should not be mooving, door is open")
+				log.Fatal("lift should not be moving, door is open")
 			}
 			if !status.Running{
-				log.Fatal("lift should not be mooving, motor is off")
+				log.Fatal("lift should not be moving, motor is off")
 			}
+			return
 		case 1,4:
 			motorDirectionCh <-driver.MD_stop
 			status.Floor = currentFloor
