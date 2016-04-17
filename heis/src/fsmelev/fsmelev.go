@@ -6,7 +6,11 @@ import (
 	"time"
 )
 
-func Init(orderedFloorCh <-chan uint,lightCh chan driver.Light, statusCh chan driver.LiftStatus, buttonCh chan<- driver.Button, quitCh <-chan bool ) bool{
+const motorStopTimeoutBase=5 //seconds
+var timeGoToFloor= time.Now()
+var motorStopTimerRunning=false
+
+func Init(orderedFloorCh <-chan uint,lightCh chan driver.Light, statusCh chan driver.LiftStatus, buttonCh chan<- driver.Button,motorStopCh chan<- bool ,quitCh <-chan bool ) bool{
 	if !driver.Init(){
 		log.Fatal("could not initialize driver")
 		return false
@@ -18,7 +22,7 @@ func Init(orderedFloorCh <-chan uint,lightCh chan driver.Light, statusCh chan dr
 	var doorTimerCh = make(chan bool,2)
 	var motorDirectionCh = make(chan driver.MotorDirection, 5)
 	go driverLoop(lightCh, buttonCh, floorSensorCh, motorDirectionCh,quitCh)
-	go executeOrder(orderedFloorCh, lightCh, statusCh, floorSensorCh, doorTimerCh, motorDirectionCh, quitCh)
+	go executeOrder(orderedFloorCh, lightCh, statusCh, floorSensorCh, doorTimerCh, motorDirectionCh,motorStopCh, quitCh)
 	log.Println("fsmElev initialized")
 	return true
 }
@@ -39,7 +43,7 @@ func driverLoop(lightCh <-chan driver.Light, buttonCh chan<- driver.Button, floo
 	}
 }
 
-func executeOrder(orderedFloorCh <-chan uint, lightCh chan<- driver.Light, statusCh chan<- driver.LiftStatus, floorSensorCh <-chan uint, doorTimerCh chan bool, motorDirectionCh chan<- driver.MotorDirection, quitCh <-chan bool){
+func executeOrder(orderedFloorCh <-chan uint, lightCh chan<- driver.Light, statusCh chan<- driver.LiftStatus, floorSensorCh <-chan uint, doorTimerCh chan bool, motorDirectionCh chan<- driver.MotorDirection,motorStopCh chan<- bool ,quitCh <-chan bool){
 	var (
 		currentFloor uint
 		stopFloor uint
@@ -77,14 +81,14 @@ func executeOrder(orderedFloorCh <-chan uint, lightCh chan<- driver.Light, statu
 		default:
 			time.Sleep(5*time.Millisecond)
 			if stopFloor != 0{
-				stopAtFloor(currentFloor, &status, &stopFloor, motorDirectionCh,lightCh,statusCh,doorTimerCh)
+				stopAtFloor(currentFloor, &status, &stopFloor, motorDirectionCh,lightCh,statusCh,doorTimerCh,motorStopCh)
 				goToFloor(currentFloor, &status, &stopFloor,motorDirectionCh,statusCh)// goes to floor if not door is open
 			}
 		}
 	}
 }
 
-func stopAtFloor(currentFloor uint, status *driver.LiftStatus, stopFloor *uint, motorDirectionCh chan<- driver.MotorDirection, lightCh chan<- driver.Light,statusCh chan<- driver.LiftStatus,doorTimerCh chan<- bool){
+func stopAtFloor(currentFloor uint, status *driver.LiftStatus, stopFloor *uint, motorDirectionCh chan<- driver.MotorDirection, lightCh chan<- driver.Light,statusCh chan<- driver.LiftStatus,doorTimerCh chan<- bool,motorStopCh chan<- bool){
 	if status.Floor == *stopFloor{
 		motorDirectionCh <-driver.MD_stop
 		status.Running = false
@@ -95,7 +99,12 @@ func stopAtFloor(currentFloor uint, status *driver.LiftStatus, stopFloor *uint, 
 			doorTimerCh<- true
 		}()
 		*stopFloor = 0
+		motorStopCh<-false
 		statusCh <-*status
+	} else if time.Now().Sub(timeGoToFloor) > time.Duration(motorStopTimeoutBase)*time.Second && motorStopTimerRunning{
+		//motorstop detected
+		motorStopTimerRunning=false
+		motorStopCh<-true
 	}
 }
 
@@ -109,6 +118,8 @@ func goToFloor(currentFloor uint, status *driver.LiftStatus, stopFloor *uint, mo
 			motorDirectionCh <- driver.MD_down
 			status.Direction = false
 		}
+		motorStopTimerRunning=true
+		timeGoToFloor=time.Now()
 		status.Running = true
 		statusCh <- *status
 	}

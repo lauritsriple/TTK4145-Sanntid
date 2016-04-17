@@ -9,9 +9,9 @@ import (
 
 const acceptTimeoutBase=1 //seconds
 const newTimeoutBase = 500 //milliseconds
-const motorStopTimeoutBase=5
 const N_FLOORS=4
 var globalQueue=make(map[uint]udp.Message)
+var motorStop bool
 
 func generateKey(floor uint, direction bool) uint{
 	if direction{
@@ -108,7 +108,11 @@ func newMessage(floor uint, direction bool){
 func checkTimeout(){
 	newTimeout:=time.Duration(newTimeoutBase)
 	acceptTimeout:=time.Duration(acceptTimeoutBase)
-	motorStopTimeout:=time.Duration(motorStopTimeoutBase)
+	select{
+	case motorStop=<-motorStopCh:
+		log.Println("MotorStop or Unstop detected. Value:",motorStop)
+	default:
+	}
 	for key,val:=range globalQueue{
 		if val.Status==udp.New || val.Status == udp.Reassign{
 			timediff:= time.Now().Sub(val.TimeRecv)
@@ -130,11 +134,10 @@ func checkTimeout(){
 			}
 		} else if val.Status == udp.Accepted && val.LiftId==myID {
 			timediff:=time.Now().Sub(val.TimeRecv)
-			if timediff > (motorStopTimeout*time.Second){
-				log.Println("Motorstop")
-				val.TimeRecv=time.Now()
+			if motorStop{
 				val.Status=udp.Reassign
 				val.Weight=1
+				val.TimeRecv=time.Now()
 				val.ReassId=myID
 				globalQueue[key]=val
 				toNetwork<-globalQueue[key]
