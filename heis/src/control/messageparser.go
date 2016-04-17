@@ -134,7 +134,7 @@ func checkTimeout(){
 			}
 		} else if val.Status == udp.Accepted && val.LiftId==myID {
 			timediff:=time.Now().Sub(val.TimeRecv)
-			if motorStop && {
+			if motorStop {
 				val.Status=udp.New
 				val.Weight=1
 				val.TimeRecv=time.Now()
