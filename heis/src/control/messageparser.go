@@ -137,7 +137,7 @@ func checkTimeout(){
 				toNetwork<-globalQueue[key]
 			} else if timediff > (motorStopTimeout*time.Second){
 				log.Println("Motorstop")
-				val.TimeRecv=time.now()
+				val.TimeRecv=time.Now()
 				val.Status=udp.Reassign
 				val.Weight=1
 				toNetwork<-globalQueue[key]
