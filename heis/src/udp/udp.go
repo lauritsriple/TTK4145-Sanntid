@@ -93,7 +93,6 @@ func BroadcastInit(send <-chan Message, recv chan<- Message, iface *net.Interfac
 //Workerthread. Called by BroadcastInit
 func broadcastSend(send <-chan Message, conn *net.UDPConn, addr *net.UDPAddr, quitCh <-chan bool) {
 	for {
-		fmt.Println("trying to send")
 		select {
 		case m := <-send:
 			buf, err := json.Marshal(m)

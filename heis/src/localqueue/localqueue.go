@@ -14,8 +14,7 @@ type OrderQueue struct {
 	Command [N_FLOORS]bool //Commands
 }
 
-const backupFile = "backupQueue.txt"
-
+var backupFile = "backupQueue.txt"
 var localQueue = OrderQueue{}
 
 func writeQueueToFile() {

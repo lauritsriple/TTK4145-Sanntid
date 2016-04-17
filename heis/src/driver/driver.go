@@ -114,6 +114,7 @@ var (
 	currentFloor      = -1
 	driverInitialized = false
 	lastPress         [14]bool //Remembers last state of buttons
+	atFloor = false
 )
 
 func Init() bool {
@@ -173,7 +174,7 @@ func ReadButtons(keypress chan<- Button) {
 	}
 }
 
-func readButton(key int, index int) bool {
+func readButton(index int, key int) bool {
 	if Io_ReadBit(key) {
 		if !lastPress[index] {
 			lastPress[index] = true
@@ -186,18 +187,20 @@ func readButton(key int, index int) bool {
 }
 
 func ReadFloorSensors(floorSeen chan<- uint) {
-	atFloor := false
 	for f := 0; f < N_FLOORS; f++ {
-		sensor := Io_ReadBit(floorSensorChannels[f])
-		if sensor && (f+1) != currentFloor {
-			currentFloor = f+1
-			floorSeen <- uint(currentFloor)
-			setFloorIndicator(f+1)
-			atFloor = true
-			return
+		if Io_ReadBit(floorSensorChannels[f]){
+			if f+1 != currentFloor {
+				if f+1 != 0{
+					setFloorIndicator(f+1)
+				}
+				currentFloor = f+1
+				floorSeen <- uint(currentFloor)
+				atFloor = true
+				return
+			}
 		}
 	}
-	if !atFloor && currentFloor !=0{
+	if !atFloor{
 		currentFloor = 0
 		floorSeen <- uint(0)
 	}
@@ -221,24 +224,23 @@ func ClearLight(light Light){
 }
 
 func ClearAll(){
-	//SetMotorDir(MD_stop)
-	//var light Light
-	//light.On  = false;
-	//for f := 0; f< N_FLOORS; f++{
-	//	light.Floor = uint(f)
-	//	light.Button = Up
-	//	ClearLight(light)
-	//	light.Button = Down
-	//	ClearLight(light)
-	//	light.Button = Command
-	//	ClearLight(light)
-	//}
-	//light.Button = Stop
-	//ClearLight(light)
-	//light.Button = Obstruction
-	//ClearLight(light)
-	//light.Button = Door
-	//ClearLight(light)
+	SetMotorDir(MD_stop)
+	light:=Light{0,Stop,false}
+	light.On  = false;
+	for f := 0; f< N_FLOORS; f++{
+		light.Floor = uint(f+1)
+		light.Button = Up
+		ClearLight(light)
+		light.Button = Down
+		ClearLight(light)
+		light.Button = Command
+		ClearLight(light)
+	}
+	light.Floor=0
+	light.Button = Stop
+	ClearLight(light)
+	light.Button = Door
+	ClearLight(light)
 }
 
 func RunMotor(direction <-chan MotorDirection){
