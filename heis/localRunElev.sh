@@ -2,4 +2,4 @@
 
 GOPATH="/home/student/Documents/TTK4145-Sanntid/heis"
 
-sh /home/student/Documents/TTK4145-Sanntid/heis/src/src
+cd /home/student/Documents/TTK4145-Sanntid/heis/src; go run main.go
