@@ -153,7 +153,6 @@ func checkTimeout(){
 }
 
 func newOrderTimeout(key,critical uint){
-	log.Println("Newordertimeout called with critical:",critical,"and order:",globalQueue[key])
 	switch critical{
 	case 3:
 		takeOrder(key)
@@ -171,7 +170,6 @@ func newOrderTimeout(key,critical uint){
 }
 
 func acceptOrderTimeout(key uint, critical uint){
-	log.Println("Acceptordertimeout called with critical:",critical,"and order:",globalQueue[key])
 	switch critical{
 	case 3:
 		log.Println("ERROR! Reassigning orders failed. FALLBACK")
@@ -184,6 +182,7 @@ func acceptOrderTimeout(key uint, critical uint){
 }
 
 func takeOrder(key uint){
+	log.Println("Taking order: ",globalQueue[key])
 	if val,inQueue:=globalQueue[key];!inQueue{
 		log.Println("Trying to accept order not in queue")
 	} else{
@@ -198,7 +197,7 @@ func takeOrder(key uint){
 }
 
 func reassignOrder(key uint){
-	log.Println("reassign order called on order: ",globalQueue[key])
+	log.Println("Reassign order called on order: ",globalQueue[key])
 	if val,inQueue:=globalQueue[key];!inQueue{
 		log.Println("Trying to reassign order not in queue")
 	} else {
