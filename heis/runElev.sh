@@ -2,5 +2,5 @@
 
 for i in "$@"
 do
-ssh $i < localRunElev.sh
+gnome-terminal -x bash -c "ssh $i < localRunElev.sh" &
 done
