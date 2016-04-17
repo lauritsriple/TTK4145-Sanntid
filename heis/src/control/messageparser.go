@@ -136,12 +136,12 @@ func checkTimeout(){
 				val.Status=udp.Reassign
 				val.Weight=1
 				toNetwork<-globalQueue[key]
-			}else if timediff > (acceptTimeout * time.Second){
+			} else if timediff > (acceptTimeout * time.Second){
 				val.Weight=cost(val.Floor,val.Direction)
 				val.TimeRecv=time.Now()
 				globalQueue[key]=val
 				toNetwork<-globalQueue[key]
-
+			}
 		}
 	}
 }
