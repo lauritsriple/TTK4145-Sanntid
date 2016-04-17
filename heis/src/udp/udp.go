@@ -78,20 +78,20 @@ func findID(a string) int {
 
 //Sets up the broadcast
 //Called by NetInit
-func BroadcastInit(send <-chan Message, recv chan<- Message, iface *net.Interface, quit <-chan bool) {
+func BroadcastInit(send <-chan Message, recv chan<- Message, iface *net.Interface, quitCh <-chan bool) {
 	group, err := net.ResolveUDPAddr("udp", braddr)
 	checkError(err)
 	conn, err := net.ListenMulticastUDP("udp", iface, group)
 	checkError(err)
 	defer conn.Close()
 	go broadcastListen(recv, conn)
-	go broadcastSend(send, conn, group, quit)
+	go broadcastSend(send, conn, group, quitCh)
 	fmt.Println("Network running")
-	<-quit //w8 for channel to be true. Defer will be called
+	<-quitCh //w8 for channel to be true. Defer will be called
 }
 
 //Workerthread. Called by BroadcastInit
-func broadcastSend(send <-chan Message, conn *net.UDPConn, addr *net.UDPAddr, quit <-chan bool) {
+func broadcastSend(send <-chan Message, conn *net.UDPConn, addr *net.UDPAddr, quitCh <-chan bool) {
 	for {
 		fmt.Println("trying to send")
 		select {
@@ -105,7 +105,7 @@ func broadcastSend(send <-chan Message, conn *net.UDPConn, addr *net.UDPAddr, qu
 					fmt.Println("NET: ", err)
 				}
 			}
-		case <-quit:
+		case <-quitCh:
 			return
 		}
 	}
