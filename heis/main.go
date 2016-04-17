@@ -8,10 +8,11 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+	"control"
 )
 
 var backupflag = flag.Bool("backup", false, "Start as backup process")
-var quit = make(chan bool)
+var quitCh = make(chan bool)
 
 func main() {
 	flag.Parse()
@@ -21,11 +22,11 @@ func main() {
 	log.Println("Starting elevator. Send SIGQUIT to shutown (CTRL+\\)")
 	cmd := spawnBackup()
 	go signaler(cmd)
-	liftControl.RunLift(&quit)
+	control.RunLift(quitCh)
 	log.Println("Lift Shutdown")
 }
 
-func spawnBackup() *exec.cmd {
+func spawnBackup() *exec.Cmd {
 	cmd := exec.Command(os.Args[0], "-backup")
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
@@ -50,7 +51,7 @@ func signaler(cmd *exec.Cmd) {
 		case sig := <-sigint:
 			log.Println("Main caught", sig, ". Trying to clean up")
 			log.Println("Main exit in 200 millisecond")
-			close(quit)
+			close(quitCh)
 			time.Sleep(200 * time.Millisecond)
 			os.Exit(1)
 		}
@@ -63,7 +64,7 @@ func backup() {
 	sigquit := make(chan os.Signal, 1)
 	sigusr := make(chan os.Signal, 1)
 	signal.Notify(sigint, syscall.SIGINT)
-	signal.Notify(sigint, syscall.SIGQUIT)
+	signal.Notify(sigquit, syscall.SIGQUIT)
 	signal.Notify(sigusr, syscall.SIGUSR1)
 	ppid := os.Getppid()
 	log.Println("Backup started by pid: ", ppid)
@@ -94,9 +95,9 @@ func killParent(ppid int) {
 	} else {
 		log.Println("Missing signals, shutting down main for restart")
 		syscall.Kill(ppid, syscall.SIGINT)
-		<-time.After(300 * Millisecond)
+		<-time.After(300 * time.Millisecond)
 		if ppid == os.Getppid() {
-			syscall(ppid, syscall.SIGKILL)
+			syscall.Kill(ppid, syscall.SIGKILL)
 		}
 
 	}

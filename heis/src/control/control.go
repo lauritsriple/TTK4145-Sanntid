@@ -18,18 +18,18 @@ var(
 	liftStatus driver.LiftStatus
 	button driver.Button
 	message udp.Message
-	quitCh=make(chan bool,2)
+	//#quitCh=make(chan bool,2)
 	toNetwork=make(chan udp.Message,10)
 	fromNetwork=make(chan udp.Message,10)
 )
 
-func RunLift(quit *chan bool){
+func RunLift(quitCh chan bool){
 	var buttonPress=make(chan driver.Button,5)
 	var status=make(chan driver.LiftStatus,5)
 	myID=udp.NetInit(toNetwork,fromNetwork,quitCh)
 	fsmelev.Init(floorOrder,setLight,status,buttonPress,quitCh)
 	restoreBackup()
-	liftStatus =<- status
+	liftStatus =<-status
 	ticker1:=time.NewTicker(10*time.Millisecond).C
 	ticker2:=time.NewTicker(5*time.Millisecond).C
 	log.Println("Network UP \n Driver UP \n My id:",myID)
@@ -46,7 +46,7 @@ func RunLift(quit *chan bool){
 			checkTimeout()
 		case <-ticker2:
 			runQueue(liftStatus,floorOrder)
-		case <-*quit:
+		case <-quitCh:
 			return
 		}
 	}
