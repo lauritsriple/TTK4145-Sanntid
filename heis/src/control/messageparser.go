@@ -117,7 +117,7 @@ func checkTimeout(){
 			} else if timediff >((1* newTimeout)*time.Millisecond){
 				newOrderTimeout(key,1)
 			}
-		} else if val.Status == udp.New && val.LiftId != myID{
+		} else if val.Status == udp.Accepted && val.LiftId != myID{
 			timediff:=time.Now().Sub(val.TimeRecv)
 			if timediff > ((4*acceptTimeout)*time.Second){
 				acceptOrderTimeout(key,3)
