@@ -139,6 +139,7 @@ func checkTimeout(){
 				val.Weight=1
 				val.TimeRecv=time.Now()
 				val.ReassId=0
+				val.LiftId=0
 				globalQueue[key]=val
 				toNetwork<-globalQueue[key]
 			} else if timediff > (acceptTimeout * time.Second){
