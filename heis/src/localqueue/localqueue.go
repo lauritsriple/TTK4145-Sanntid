@@ -116,4 +116,3 @@ func checkDown(start uint, stop uint) uint {
 	}
 	return 0
 }
-
