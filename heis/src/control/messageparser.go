@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-const acceptTimeoutBase=1 //seconds
+const acceptTimeoutBase=4 //seconds
 const newTimeoutBase = 500 //milliseconds
 const N_FLOORS=4
 var globalQueue=make(map[uint]udp.Message)

@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-const motorStopTimeoutBase=5 //seconds
+const motorStopTimeoutBase=12 //seconds
 var timeGoToFloor= time.Now()
 var motorStopTimerRunning=false
 
